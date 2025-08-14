@@ -1,0 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+.dark {
+    --background: 0 0% 0%;
+    --foreground: 120 100% 70%;
+
+    --card: 0 0% 0%;
+    --card-foreground: 120 100% 70%;
+
+    --popover: 0 0% 0%;
+    --popover-foreground: 120 100% 70%;
+
+    --primary: 190 95% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 150 30% 10%;
+    --secondary-foreground: 120 100% 70%;
+
+    --muted: 150 20% 12%;
+    --muted-foreground: 120 40% 60%;
+
+    --accent: 50 100% 50%;
+    --accent-foreground: 222.2 84% 4.9%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 120 100% 40%;
+    --input: 120 100% 30%;
+    --ring: 120 100% 60%;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 120 100% 70%;
+    --sidebar-primary: 190 95% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 150 20% 12%;
+    --sidebar-accent-foreground: 120 100% 70%;
+    --sidebar-border: 120 100% 35%;
+    --sidebar-ring: 120 100% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Press Start 2P', monospace;
+    background-color: hsl(var(--background));
+    background-image: radial-gradient(circle at 1px 1px, hsl(var(--grid-dot) / 0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-attachment: fixed;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  /* Display font for gaming title */
+  .font-display { font-family: 'Press Start 2P', monospace; letter-spacing: 0.02em; }
+}
+
+/* Additional semantic tokens for monochrome hero and surfaces */
+@layer base {
+  :root {
+    --hero-start: 0 0% 100%;
+    --hero-end: 0 0% 92%;
+    --surface-muted: 0 0% 96%;
+    --grid-dot: 210 10% 80%;
+    --timer-safe: 120 50% 50%;
+    --timer-warning: 45 100% 60%;
+    --timer-danger: 0 100% 60%;
+  }
+  .dark {
+    --hero-start: 165 80% 10%;
+    --hero-end: 190 80% 16%;
+    --surface-muted: 150 20% 12%;
+    --grid-dot: 120 100% 35%;
+    --timer-safe: 120 60% 60%;
+    --timer-warning: 45 100% 70%;
+    --timer-danger: 0 100% 70%;
+  }
+}
+
+/* Micro-interaction utilities */
+@layer utilities {
+  .animate-micro-bounce {
+    animation: micro-bounce 0.6s ease-in-out infinite;
+  }
+  .animate-gentle-glow {
+    animation: gentle-glow 2s ease-in-out infinite;
+  }
+  .animate-ripple {
+    animation: ripple 0.6s ease-out;
+  }
+  .animate-draw-checkmark {
+    animation: draw-checkmark 0.6s ease-in-out;
+  }
+  .animate-secret-rainbow {
+    animation: secret-rainbow 2s linear infinite;
+  }
+  .animate-easter-spin {
+    animation: easter-spin 1s ease-in-out;
+  }
+}
+
+/* Simple checkerboard background utility using design tokens */
+@layer utilities {
+  .bg-checker {
+    background-image:
+      repeating-linear-gradient(0deg, hsl(var(--background)) 0 8px, hsl(var(--muted)) 8px 16px),
+      repeating-linear-gradient(90deg, hsl(var(--background)) 0 8px, hsl(var(--muted)) 8px 16px);
+    background-size: 16px 16px;
+  }
+  .bg-grid-dots {
+    background-color: hsl(var(--background));
+    background-image: radial-gradient(circle at 1px 1px, hsl(var(--grid-dot) / 0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
