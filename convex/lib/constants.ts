@@ -1,0 +1,16 @@
+// Game configuration constants
+export const GAME_CONFIG = {
+  DEFAULT_MAX_PLAYERS: 8,
+  DEFAULT_ROUNDS_PER_GAME: 5,
+  DEFAULT_TIME_PER_ROUND: 90, // seconds
+  PROMPT_PHASE_DURATION: 60000, // 60 seconds
+  GENERATION_PHASE_DURATION: 30000, // 30 seconds  
+  VOTING_PHASE_DURATION: 45000, // 45 seconds
+  RESULTS_PHASE_DURATION: 15000, // 15 seconds
+  POINTS_PER_WIN: 100,
+  POINTS_PER_VOTE: 10,
+} as const;
+
+// Room code configuration
+export const ROOM_CODE_LENGTH = 6;
+export const ROOM_CODE_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

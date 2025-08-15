@@ -660,7 +660,7 @@ curl https://your-app.convex.site/health
 
 ## Congratulations! 🎉
 
-Your Visionairy app is now fully deployed and operational. Remember to:
+Your prompty app is now fully deployed and operational. Remember to:
 1. Monitor user feedback
 2. Track performance metrics
 3. Iterate based on usage patterns

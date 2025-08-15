@@ -1,7 +1,7 @@
 # Step 0: Initial Setup & Configuration
 
 ## Objective
-Set up the Convex backend infrastructure and configure the development environment for the Visionairy app.
+Set up the Convex backend infrastructure and configure the development environment for the prompty app.
 
 ## Prerequisites
 - Node.js 18+ installed
@@ -200,9 +200,9 @@ Once setup is complete and verified:
 3. Do not modify files in convex/_generated/
 
 ## Success Criteria
-- [ ] All packages installed without errors
-- [ ] Convex dev server running
-- [ ] Environment variables configured
-- [ ] File structure created
-- [ ] No TypeScript errors
-- [ ] Can access Convex dashboard
+- [x] All packages installed without errors
+- [x] Convex dev server running
+- [x] Environment variables configured
+- [x] File structure created
+- [x] No TypeScript errors (Convex-related)
+- [x] Can access Convex dashboard

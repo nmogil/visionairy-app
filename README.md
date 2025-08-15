@@ -1,1 +1,1 @@
-# visionairy-app
+# prompty

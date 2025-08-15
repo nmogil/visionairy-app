@@ -1,23 +1,39 @@
 # Step 1: Authentication System Implementation
 
 ## Objective
-Implement a complete authentication system using Convex Auth with email/password and anonymous guest support.
+Implement a simple authentication system using Convex Auth with OTP (One-Time Password) via Resend email and anonymous guest support.
 
 ## Prerequisites
 - ✅ Completed Step 0 (Setup & Configuration)
 - ✅ Convex dev server running
-- ✅ Environment variables configured
+- ✅ Resend account created (https://resend.com)
+- ✅ Resend API key obtained
 
 ## Deliverables
-- ✅ User authentication with email/password
+- ✅ OTP authentication via email (using Resend)
 - ✅ Anonymous guest support
 - ✅ User profile management
 - ✅ Username selection during onboarding
 - ✅ Protected routes and auth state management
+- ✅ Automatic new vs existing user detection
 
 ## Implementation Steps
 
-### 1. Define User Schema
+### 1. Install Required Dependencies
+
+```bash
+npm install @convex-dev/auth resend @oslojs/crypto
+```
+
+### 2. Configure Resend API Key
+
+Sign up for Resend at https://resend.com and get your API key, then:
+
+```bash
+npx convex env set AUTH_RESEND_KEY your_resend_api_key_here
+```
+
+### 3. Define User Schema
 
 Create/Update `convex/schema.ts`:
 
@@ -44,6 +60,7 @@ export default defineSchema({
     avatarId: v.optional(v.id("_storage")),
     lastActiveAt: v.optional(v.number()),
     onboardingCompleted: v.optional(v.boolean()),
+    isNewUser: v.optional(v.boolean()), // Track if user just signed up
     
     // Game statistics
     gamesPlayed: v.optional(v.number()),
@@ -55,72 +72,127 @@ export default defineSchema({
 });
 ```
 
-### 2. Configure Authentication Providers
+### 4. Create OTP Provider with Resend
+
+Create `convex/ResendOTP.ts`:
+
+```typescript
+import { Email } from "@convex-dev/auth/providers/Email";
+import { Resend as ResendAPI } from "resend";
+import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
+
+export const ResendOTP = Email({
+  id: "resend-otp",
+  apiKey: process.env.AUTH_RESEND_KEY,
+  maxAge: 60 * 10, // 10 minutes
+  async generateVerificationToken() {
+    const random: RandomReader = {
+      read(bytes) {
+        crypto.getRandomValues(bytes);
+      },
+    };
+    
+    // Generate 6-digit code
+    const alphabet = "0123456789";
+    return generateRandomString(random, alphabet, 6);
+  },
+  async sendVerificationRequest({ identifier: email, provider, token }) {
+    const resend = new ResendAPI(provider.apiKey);
+    
+    const { error } = await resend.emails.send({
+      // Use 'onboarding@resend.dev' for testing, replace with your domain in production
+      from: "prompty <onboarding@resend.dev>",
+      to: [email],
+      subject: `Your prompty login code: ${token}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5; margin: 0; padding: 20px;">
+          <div style="max-width: 500px; margin: 0 auto; background-color: white; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 30px;">
+            <h1 style="color: #18181b; font-size: 24px; margin-bottom: 10px;">Your login code</h1>
+            <p style="color: #71717a; margin-bottom: 30px;">Enter this code to sign in to prompty:</p>
+            
+            <div style="background-color: #f4f4f5; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 30px;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #18181b; font-family: monospace;">
+                ${token}
+              </span>
+            </div>
+            
+            <p style="color: #71717a; font-size: 14px; margin-bottom: 10px;">
+              This code will expire in 10 minutes.
+            </p>
+            
+            <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 30px 0;">
+            
+            <p style="color: #a1a1aa; font-size: 12px; margin: 0;">
+              If you didn't request this code, you can safely ignore this email.
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Your prompty login code: ${token}\n\nThis code will expire in 10 minutes.\n\nIf you didn't request this code, you can safely ignore this email.`,
+    });
+    
+    if (error) {
+      throw new Error(JSON.stringify(error));
+    }
+  },
+});
+```
+
+### 5. Configure Authentication with OTP
 
 Create `convex/auth.ts`:
 
 ```typescript
 import { convexAuth } from "@convex-dev/auth/server";
-import { Password } from "@convex-dev/auth/providers/Password";
 import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
+import { ResendOTP } from "./ResendOTP";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [
-    // Password authentication with email
-    Password({
-      // Custom password validation
-      validatePasswordRequirements: (password: string) => {
-        if (password.length < 8) {
-          throw new Error("Password must be at least 8 characters");
-        }
-        if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
-          throw new Error("Password must contain letters and numbers");
-        }
-      },
-      
-      // Custom profile handling
-      profile(params) {
-        return {
-          email: params.email as string,
-          name: params.name as string,
-        };
-      },
-    }),
-    
-    // Anonymous authentication for guests
-    Anonymous,
-  ],
+  providers: [ResendOTP, Anonymous],
   
   callbacks: {
     async createOrUpdateUser(ctx, args) {
-      // Check if user exists
+      // Check if this is an existing user
       const existingUser = args.existingUserId 
         ? await ctx.db.get(args.existingUserId)
         : null;
         
       if (existingUser) {
-        // Update last active timestamp
+        // EXISTING USER - just update last active time
         await ctx.db.patch(existingUser._id, {
           lastActiveAt: Date.now(),
+          isNewUser: false, // Ensure it's marked as not new
         });
         return existingUser._id;
       }
       
-      // Create new user with default values
-      return await ctx.db.insert("users", {
+      // NEW USER - create with default values
+      const userId = await ctx.db.insert("users", {
         ...args.profile,
+        email: args.profile?.email,
+        isAnonymous: args.provider === "anonymous",
         lastActiveAt: Date.now(),
         onboardingCompleted: false,
+        isNewUser: true, // Mark as new user
         gamesPlayed: 0,
         gamesWon: 0,
         totalScore: 0,
       });
+      
+      return userId;
     },
   },
 });
 ```
 
-### 3. Set Up HTTP Routes
+### 6. Set Up HTTP Routes
 
 Create `convex/http.ts`:
 
@@ -146,7 +218,7 @@ http.route({
 export default http;
 ```
 
-### 4. Create User Management Functions
+### 7. Create User Management Functions
 
 Create `convex/users.ts`:
 
@@ -166,6 +238,7 @@ export const getCurrentUser = query({
       displayName: v.optional(v.string()),
       avatarId: v.optional(v.id("_storage")),
       onboardingCompleted: v.optional(v.boolean()),
+      isNewUser: v.optional(v.boolean()),
       gamesPlayed: v.optional(v.number()),
       gamesWon: v.optional(v.number()),
       totalScore: v.optional(v.number()),
@@ -228,6 +301,7 @@ export const updateUsername = mutation({
       username: args.username,
       displayName: args.username,
       onboardingCompleted: true,
+      isNewUser: false, // No longer a new user after onboarding
     });
     
     return null;
@@ -251,7 +325,7 @@ export const checkUsernameAvailable = query({
 });
 ```
 
-### 5. Update Frontend Auth Provider
+### 8. Update Frontend Auth Provider
 
 Update `src/main.tsx`:
 
@@ -274,7 +348,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 ```
 
-### 6. Create Auth Hook
+### 9. Create Auth Hook
 
 Create `src/hooks/use-auth.ts`:
 
@@ -293,12 +367,13 @@ export function useAuth() {
     signOut,
     isAuthenticated: !!user,
     isLoading: user === undefined,
+    isNewUser: user?.isNewUser === true,
     needsOnboarding: user && !user.onboardingCompleted,
   };
 }
 ```
 
-### 7. Update Login Component
+### 10. Create Simple OTP Login Component
 
 Update `src/pages/Login.tsx`:
 
@@ -308,29 +383,48 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { ArrowLeft, Mail, KeyRound, User } from "lucide-react";
 
 export function Login() {
   const { signIn } = useAuthActions();
   const navigate = useNavigate();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"email" | "code">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     
-    const formData = new FormData(e.currentTarget);
-    formData.append("flow", isSignUp ? "signUp" : "signIn");
+    try {
+      const formData = new FormData();
+      formData.append("email", email);
+      await signIn("resend-otp", formData);
+      setStep("code");
+    } catch (err) {
+      setError("Failed to send code. Please check your email and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
     
     try {
-      await signIn("password", formData);
+      const formData = new FormData();
+      formData.append("email", email);
+      formData.append("code", code);
+      await signIn("resend-otp", formData);
       navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      setError("Invalid or expired code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -344,84 +438,126 @@ export function Login() {
       await signIn("anonymous");
       navigate("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Guest login failed");
+      setError("Guest login failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleBack = () => {
+    setStep("email");
+    setCode("");
+    setError(null);
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{isSignUp ? "Create Account" : "Sign In"}</CardTitle>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl">Welcome to prompty</CardTitle>
+          <CardDescription>
+            {step === "email" 
+              ? "Enter your email to get started" 
+              : `We sent a code to ${email}`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                disabled={loading}
-              />
-            </div>
-            
-            {isSignUp && (
-              <div>
-                <Label htmlFor="name">Name</Label>
+          {step === "email" ? (
+            <form onSubmit={handleSendCode} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="name"
-                  name="name"
-                  type="text"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
                   required
                   disabled={loading}
+                  autoFocus
                 />
               </div>
-            )}
-            
-            <div>
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
+              
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+              
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Sending..." : "Send Login Code"}
+              </Button>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or
+                  </span>
+                </div>
+              </div>
+              
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleGuestLogin}
                 disabled={loading}
-                minLength={8}
-              />
-            </div>
-            
-            {error && (
-              <div className="text-red-500 text-sm">{error}</div>
-            )}
-            
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : (isSignUp ? "Sign Up" : "Sign In")}
-            </Button>
-          </form>
-          
-          <div className="mt-4 space-y-2">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setIsSignUp(!isSignUp)}
-              disabled={loading}
-            >
-              {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
-            </Button>
-            
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={handleGuestLogin}
-              disabled={loading}
-            >
-              Continue as Guest
-            </Button>
-          </div>
+              >
+                <User className="mr-2 h-4 w-4" />
+                Continue as Guest
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="pl-10 text-center text-2xl tracking-widest"
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  required
+                  disabled={loading}
+                  autoFocus
+                />
+              </div>
+              
+              {error && (
+                <p className="text-sm text-red-500">{error}</p>
+              )}
+              
+              <Button type="submit" className="w-full" disabled={loading || code.length !== 6}>
+                {loading ? "Verifying..." : "Sign In"}
+              </Button>
+              
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={handleBack}
+                disabled={loading}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Use Different Email
+              </Button>
+              
+              <p className="text-center text-sm text-muted-foreground">
+                Didn't receive the code?{" "}
+                <button
+                  type="button"
+                  onClick={() => handleSendCode(new Event("submit") as any)}
+                  className="underline hover:text-primary"
+                  disabled={loading}
+                >
+                  Resend
+                </button>
+              </p>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -429,164 +565,111 @@ export function Login() {
 }
 ```
 
-### 8. Create Username Selection Component
+### 11. Keep Username Dialog (unchanged)
 
-Create `src/components/auth/UsernameDialog.tsx`:
+The `src/components/auth/UsernameDialog.tsx` component remains the same as it works for both OTP and password auth.
 
-```tsx
-import { useState, useEffect } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Label } from "../ui/label";
+## How New vs Existing Users Work
 
-export function UsernameDialog({ open }: { open: boolean }) {
-  const [username, setUsername] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
-  
-  const updateUsername = useMutation(api.users.updateUsername);
-  const isAvailable = useQuery(
-    api.users.checkUsernameAvailable,
-    username.length >= 3 ? { username } : "skip"
-  );
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    
-    try {
-      await updateUsername({ username });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update username");
-    }
-  };
-  
-  useEffect(() => {
-    if (username.length >= 3) {
-      setChecking(true);
-      const timer = setTimeout(() => setChecking(false), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [username]);
-  
-  return (
-    <Dialog open={open}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Choose Your Username</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
-              minLength={3}
-              maxLength={20}
-              pattern="[a-zA-Z0-9_]+"
-              required
-            />
-            {username.length >= 3 && !checking && (
-              <p className={`text-sm mt-1 ${isAvailable ? "text-green-500" : "text-red-500"}`}>
-                {isAvailable ? "Username available" : "Username taken"}
-              </p>
-            )}
-          </div>
-          
-          {error && (
-            <div className="text-red-500 text-sm">{error}</div>
-          )}
-          
-          <Button 
-            type="submit" 
-            disabled={!isAvailable || username.length < 3}
-            className="w-full"
-          >
-            Continue
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
+### Detection Logic
+The system automatically detects new vs existing users:
+
+1. **New User**: When `args.existingUserId` is `null` in the `createOrUpdateUser` callback
+   - Sets `isNewUser: true` flag
+   - Sets `onboardingCompleted: false`
+   - User sees username selection dialog
+
+2. **Existing User**: When `args.existingUserId` is present
+   - Updates `lastActiveAt` timestamp
+   - Sets `isNewUser: false` 
+   - User goes directly to dashboard
+
+### Usage in Components
+```typescript
+// In your App.tsx or routing logic
+const { user, isNewUser, needsOnboarding } = useAuth();
+
+if (isNewUser || needsOnboarding) {
+  // Show username selection dialog
+  return <UsernameDialog open={true} />;
 }
 ```
 
 ## Testing Instructions
 
-### 1. Test User Registration
+### 1. Test OTP Send
 ```typescript
 // In browser console
 const formData = new FormData();
 formData.append("email", "test@example.com");
-formData.append("password", "testpass123");
-formData.append("name", "Test User");
-formData.append("flow", "signUp");
-
-await convex.mutation(api.auth.signIn, {
-  provider: "password",
-  params: Object.fromEntries(formData)
-});
+await signIn("resend-otp", formData);
+// Check email for code
 ```
 
-### 2. Test Current User Query
+### 2. Test OTP Verification
 ```typescript
+const formData = new FormData();
+formData.append("email", "test@example.com");
+formData.append("code", "123456"); // Use actual code from email
+await signIn("resend-otp", formData);
+```
+
+### 3. Test New vs Existing User
+```typescript
+// Check current user
 const user = await convex.query(api.users.getCurrentUser);
-console.log("Current user:", user);
-```
-
-### 3. Test Username Update
-```typescript
-await convex.mutation(api.users.updateUsername, {
-  username: "testuser123"
-});
+console.log("Is new user?", user?.isNewUser);
+console.log("Needs onboarding?", !user?.onboardingCompleted);
 ```
 
 ### 4. Test Guest Login
 ```typescript
-await convex.mutation(api.auth.signIn, {
-  provider: "anonymous"
-});
+await signIn("anonymous");
 ```
 
-## Debug Commands
+## Environment Variables
 
-```bash
-# View users table
-mcp_convex_data --deploymentSelector dev --tableName users --order asc
-
-# Check auth tables
-mcp_convex_tables --deploymentSelector dev
-
-# Test auth functions
-mcp_convex_functionSpec --deploymentSelector dev | grep auth
+Required in your Convex dashboard:
+```
+AUTH_RESEND_KEY=re_xxxxxxxxxxxxx
 ```
 
 ## Common Issues & Solutions
 
-### Issue: "User not found" after sign-in
-**Solution:** Check that email index is properly set in schema
+### Issue: "Failed to send code"
+**Solution:** 
+- Check AUTH_RESEND_KEY is set correctly
+- Verify Resend account is active
+- For testing, use "onboarding@resend.dev" as sender
 
-### Issue: Password validation errors
-**Solution:** Ensure password meets requirements (8+ chars, letters and numbers)
+### Issue: Code not received
+**Solution:** 
+- Check spam folder
+- Verify email address is correct
+- Resend has rate limits for free tier
 
-### Issue: Username already taken
-**Solution:** The checkUsernameAvailable query helps prevent this in UI
+### Issue: Code expired
+**Solution:** Code expires in 10 minutes, request a new one
 
 ## Success Criteria
-- [ ] Users can sign up with email/password
-- [ ] Users can sign in with existing credentials
-- [ ] Guest login works without credentials
-- [ ] Username selection appears for new users
-- [ ] Current user data is accessible
+- [ ] Users can sign in with email OTP
+- [ ] OTP codes are received via email
+- [ ] Guest login works without email
+- [ ] New users see username selection
+- [ ] Existing users skip onboarding
 - [ ] Protected routes redirect to login
+
+## Benefits of OTP over Password
+
+1. **No Password Management** - Users don't forget passwords
+2. **Enhanced Security** - No password leaks, time-limited codes
+3. **Simpler Implementation** - No reset flows, validation, or storage
+4. **Better UX** - Familiar pattern (Slack, WhatsApp)
+5. **Less Support** - No "forgot password" tickets
 
 ## Next Steps
 Once authentication is working:
-1. Test with multiple user accounts
-2. Verify username uniqueness
-3. Proceed to **02-room-management-instructions.md**
+1. Test with multiple email addresses
+2. Verify new vs existing user detection
+3. Confirm username uniqueness
+4. Proceed to **02-room-management-instructions.md**

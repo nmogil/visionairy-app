@@ -1,7 +1,7 @@
-# Visionairy App - Convex Backend Implementation Guide
+# prompty App - Convex Backend Implementation Guide
 
 ## Overview
-This guide provides detailed, step-by-step instructions for implementing the Convex backend for the Visionairy app. Each feature is implemented as a **vertical slice** - meaning all layers (database, backend functions, and frontend integration) are completed together to ensure functionality at each step.
+This guide provides detailed, step-by-step instructions for implementing the Convex backend for the prompty app. Each feature is implemented as a **vertical slice** - meaning all layers (database, backend functions, and frontend integration) are completed together to ensure functionality at each step.
 
 ## Available Tools
 Throughout this implementation, you have access to Convex MCP tools for debugging and testing:
@@ -2179,4 +2179,4 @@ After completing all features:
    - Monitor performance metrics
    - Track user engagement
 
-This completes the comprehensive implementation guide for the Visionairy app's Convex backend. Each feature has been designed as a vertical slice to ensure functionality at every step.
+This completes the comprehensive implementation guide for the prompty app's Convex backend. Each feature has been designed as a vertical slice to ensure functionality at every step.

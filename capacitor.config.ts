@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.visionairy.app',
-  appName: 'visionary-ui-mock',
+  appId: 'com.prompty.app',
+  appName: 'prompty',
   webDir: 'dist',
   server: {
     url: 'http://localhost:8080',
