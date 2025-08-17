@@ -15,18 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Link, useNavigate } from "react-router-dom";
 import { DoorOpen, Grid3X3, LogOut, Plus } from "lucide-react";
-
-// Mock helpers
-const getMockUser = () => {
-  const stored = localStorage.getItem("mockUser");
-  return stored
-    ? JSON.parse(stored)
-    : {
-        id: "123",
-        name: "Demo User",
-        email: "demo@example.com",
-      };
-};
+import { useAuth } from "@/hooks/use-auth";
+import { useAuthActions } from "@convex-dev/auth/react";
 
 const mockStats = {
   gamesPlayed: 42,
@@ -52,16 +42,10 @@ const formatPlacement = (n: number) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState(getMockUser());
-  const [loading, setLoading] = useState(true);
+  const { user, isLoading } = useAuth();
+  const { signOut } = useAuthActions();
   const [showJoin, setShowJoin] = useState(false);
   const [roomCode, setRoomCode] = useState("");
-
-  // Simulate loading state
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
-  }, []);
 
   // SEO
   const canonical = useMemo(
@@ -72,7 +56,7 @@ const Dashboard = () => {
   // Actions
   const handleCreateRoom = () => {
     const roomCode = "ABCDEF";
-    window.location.href = `/room/${roomCode}`;
+    navigate(`/room/${roomCode}`);
   };
 
   const handleJoinRoom = () => {
@@ -80,17 +64,22 @@ const Dashboard = () => {
       alert("Please enter a valid 6-letter code");
       return;
     }
-    window.location.href = `/room/${roomCode}`;
+    navigate(`/room/${roomCode}`);
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem("mockUser");
-    window.location.href = "/";
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
 
-  // Derived
-  const stats = mockStats;
-  const recent = mockRecentGames;
+  // Use real user data or fallback to mock for stats
+  const stats = user ? {
+    gamesPlayed: user.gamesPlayed || 0,
+    gamesWon: user.gamesWon || 0,
+    imagesCreated: (user.gamesPlayed || 0) * 4, // estimate
+    winRate: user.gamesPlayed ? ((user.gamesWon || 0) / user.gamesPlayed * 100) : 0,
+  } : mockStats;
+  const recent = mockRecentGames; // Keep mock for now
 
   return (
     <>
@@ -110,7 +99,7 @@ const Dashboard = () => {
         {/* Page header with sign out */}
         <section className="mb-6 flex items-center justify-between gap-4">
           <div>
-            {loading ? (
+            {isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-6 w-40" />
                 <Skeleton className="h-4 w-64" />
@@ -119,7 +108,7 @@ const Dashboard = () => {
               <>
                 <p className="text-sm text-muted-foreground">Welcome back</p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">
-                  {user.name}!
+                  {user?.username || user?.displayName || (user?.isAnonymous ? "Anonymous User" : "User")}!
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {new Date().toLocaleString()}
@@ -141,7 +130,7 @@ const Dashboard = () => {
             Quick Actions
           </h2>
 
-          {loading ? (
+          {isLoading ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Skeleton className="h-32" />
               <Skeleton className="h-32" />
@@ -199,7 +188,7 @@ const Dashboard = () => {
           <h2 id="stats" className="mb-3 text-lg font-medium">
             Your Stats
           </h2>
-          {loading ? (
+          {isLoading ? (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <Skeleton className="h-24" />
               <Skeleton className="h-24" />
@@ -222,14 +211,14 @@ const Dashboard = () => {
             <h2 id="recent" className="text-lg font-medium">
               Recent Games
             </h2>
-            {!loading && (
+            {!isLoading && (
               <Link to="#" className="story-link text-sm">
                 View all
               </Link>
             )}
           </div>
 
-          {loading ? (
+          {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-16" />
               <Skeleton className="h-16" />

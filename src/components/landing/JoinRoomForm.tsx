@@ -2,39 +2,71 @@ import { useCallback, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/8bit/button";
 import { LogIn } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useAuth } from "@/hooks/use-auth";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import UsernameDialog from "@/components/auth/UsernameDialog";
-import useUser from "@/hooks/use-user";
 
 export const JoinRoomForm = () => {
   const [code, setCode] = useState("");
   const [showNameModal, setShowNameModal] = useState(false);
-  const { user, setUsername, ensureGuest } = useUser();
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const { signIn } = useAuthActions();
+  const navigate = useNavigate();
+  const updateUsername = useMutation(api.users.updateUsername);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const navigateToRoom = useCallback((roomCode: string) => {
     console.log("Joining room:", roomCode);
-    window.location.href = `/room/${roomCode}`;
-  }, []);
+    navigate(`/room/${roomCode}`);
+  }, [navigate]);
 
-  const handleJoin = useCallback(() => {
-    ensureGuest();
+  const handleJoin = useCallback(async () => {
     if (!/^[A-Z]{6}$/.test(code)) {
       alert("Please enter a valid 6-letter code");
       return;
     }
-    if (!user?.username) {
+    
+    // If not authenticated, sign in anonymously first
+    if (!isAuthenticated && !isSigningIn) {
+      setIsSigningIn(true);
+      try {
+        await signIn("anonymous");
+        console.log("Anonymous sign-in successful");
+      } catch (error) {
+        console.error("Anonymous sign-in failed:", error);
+        setIsSigningIn(false);
+        return;
+      }
+      setIsSigningIn(false);
+    }
+    
+    // Check if user has a username, if not show dialog
+    if (isAuthenticated && user && !user.username) {
       setShowNameModal(true);
       return;
     }
-    navigateToRoom(code);
-  }, [code, ensureGuest, navigateToRoom, user?.username]);
+    
+    // If authenticated and has username, navigate to room
+    if (isAuthenticated && user?.username) {
+      navigateToRoom(code);
+    }
+  }, [code, isAuthenticated, isSigningIn, signIn, user, navigateToRoom]);
 
   const handleNameSubmit = useCallback(
-    (name: string) => {
-      setUsername(name);
-      setShowNameModal(false);
-      navigateToRoom(code);
+    async (name: string) => {
+      try {
+        await updateUsername({ username: name });
+        setShowNameModal(false);
+        navigateToRoom(code);
+      } catch (error) {
+        console.error("Failed to update username:", error);
+        // Dialog will show the error and remain open
+      }
     },
-    [code, navigateToRoom, setUsername]
+    [code, updateUsername, navigateToRoom]
   );
 
   return (
@@ -57,9 +89,15 @@ export const JoinRoomForm = () => {
           }}
           className="flex-1 min-w-0 px-2 sm:px-3 h-12 text-center tracking-[0.1em] uppercase md:h-12 [&::placeholder]:whitespace-nowrap [&::placeholder]:tracking-tighter [&::placeholder]:normal-case [&::placeholder]:text-[9px] sm:[&::placeholder]:text-xs md:[&::placeholder]:text-sm"
         />
-        <Button type="submit" variant="outline" size="xl" aria-label="Join with code">
+        <Button 
+          type="submit" 
+          variant="outline" 
+          size="xl" 
+          aria-label="Join with code"
+          disabled={isLoading || isSigningIn}
+        >
           <LogIn />
-          Join
+          {isLoading || isSigningIn ? "Loading..." : "Join"}
         </Button>
       </form>
       <UsernameDialog open={showNameModal} onSubmit={handleNameSubmit} />

@@ -38,8 +38,13 @@ export const updateUsername = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    console.log("updateUsername called with args:", args);
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
+    console.log("getAuthUserId returned:", userId);
+    if (!userId) {
+      console.error("Authentication failed - userId is null");
+      throw new Error("Not authenticated");
+    }
     
     // Validate username format
     if (args.username.length < 3 || args.username.length > 20) {
@@ -61,6 +66,7 @@ export const updateUsername = mutation({
     }
     
     // Update user profile
+    console.log("Updating user profile for userId:", userId);
     await ctx.db.patch(userId, {
       username: args.username,
       displayName: args.username,
@@ -68,6 +74,7 @@ export const updateUsername = mutation({
       isNewUser: false, // No longer a new user after onboarding
     });
     
+    console.log("Username update completed successfully");
     return null;
   },
 });

@@ -11,7 +11,9 @@ import { Copy, Share2, Crown, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import RoomSettings from "@/components/room/RoomSettings";
 import UsernameDialog from "@/components/auth/UsernameDialog";
-import useUser from "@/hooks/use-user";
+import { useAuth } from "@/hooks/use-auth";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 // Types
 interface Player {
@@ -27,10 +29,8 @@ const Room = () => {
   const code = (codeParam || "").toUpperCase();
 
   // User (guest or signed-in)
-  const { user, setUsername, ensureGuest } = useUser();
-  useEffect(() => {
-    ensureGuest();
-  }, [ensureGuest]);
+  const { user } = useAuth();
+  const updateUsername = useMutation(api.users.updateUsername);
   const showUsernameDialog = !user?.username;
 
   // Mock Room + Current User
@@ -130,11 +130,18 @@ const Room = () => {
   };
   const handleLeave = () => navigate("/");
 
-  const handleUsernameSaved = (name: string) => {
+  const handleUsernameSaved = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    setUsername(trimmed);
-    setPlayers((prev) => prev.map((p) => (p.id === currentUser.id ? { ...p, name: trimmed } : p)));
+    
+    try {
+      await updateUsername({ username: trimmed });
+      // Update local player list
+      setPlayers((prev) => prev.map((p) => (p.id === currentUser.id ? { ...p, name: trimmed } : p)));
+    } catch (error) {
+      console.error("Failed to update username:", error);
+      // The dialog will show the error
+    }
   };
 
   if (notFound) {

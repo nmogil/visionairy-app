@@ -8,11 +8,12 @@ import { Loader2 } from "lucide-react";
 
 interface Props {
   open: boolean;
+  onSubmit?: (username: string) => void;
 }
 
 const pattern = /^[a-zA-Z0-9_]+$/;
 
-export default function UsernameDialog({ open }: Props) {
+export default function UsernameDialog({ open, onSubmit }: Props) {
   const [username, setUsername] = useState("");
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -52,8 +53,14 @@ export default function UsernameDialog({ open }: Props) {
     setError(null);
     
     try {
-      await updateUsername({ username: username.trim() });
-      // Dialog will close automatically when user.onboardingCompleted becomes true
+      if (onSubmit) {
+        // Landing page flow - use the provided callback
+        onSubmit(username.trim());
+      } else {
+        // Protected route flow - use Convex mutation
+        await updateUsername({ username: username.trim() });
+        // Dialog will close automatically when user data updates
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update username");
     } finally {
