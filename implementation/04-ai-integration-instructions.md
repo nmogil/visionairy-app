@@ -518,6 +518,213 @@ export const getGenerationStatus = query({
 });
 ```
 
+## UI Integration
+
+### 1. Create VotingPhase Component
+
+Update `src/features/game/phases/VotingPhase.tsx`:
+
+```tsx
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Clock, CheckCircle, Image as ImageIcon } from "lucide-react";
+import { Id } from "../../../../convex/_generated/dataModel";
+
+interface VotingPhaseProps {
+  currentQuestion: string;
+  images: any[];
+  hasVoted: boolean;
+  myVote?: string;
+  timeRemaining: number;
+  onVote: (imageId: string) => void;
+}
+
+const VotingPhase: React.FC<VotingPhaseProps> = ({
+  currentQuestion,
+  images,
+  hasVoted,
+  myVote,
+  timeRemaining,
+  onVote,
+}) => {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
+  const handleVote = (imageId: string) => {
+    if (hasVoted) return;
+    setSelectedImage(imageId);
+    onVote(imageId);
+  };
+  
+  return (
+    <div className="space-y-6">
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold">{currentQuestion}</h2>
+        <p className="text-muted-foreground">
+          {hasVoted ? "Waiting for others..." : "Vote for your favorite!"}
+        </p>
+        <div className="flex items-center justify-center gap-2">
+          <Clock className="h-4 w-4" />
+          <span className={`font-mono ${timeRemaining <= 10 ? "text-destructive animate-pulse" : ""}`}>
+            {timeRemaining}s
+          </span>
+        </div>
+      </div>
+      
+      {hasVoted && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-center gap-2 p-3 bg-success/20 border-2 border-success rounded-lg"
+        >
+          <CheckCircle className="h-5 w-5 text-success" />
+          <span className="font-medium">Vote submitted!</span>
+        </motion.div>
+      )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {images.map((image, index) => (
+          <motion.div
+            key={image._id}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.1 }}
+          >
+            <Card
+              className={`relative overflow-hidden cursor-pointer transition-all ${
+                image.isOwn ? "opacity-50 cursor-not-allowed" : 
+                hasVoted && myVote === image._id ? "ring-2 ring-primary" : 
+                "hover:scale-105"
+              }`}
+              onClick={() => !image.isOwn && !hasVoted && handleVote(image._id)}
+            >
+              <div className="aspect-square relative bg-muted">
+                <img
+                  src={image.imageUrl}
+                  alt={`AI generated: ${image.promptText}`}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                {image.isOwn && (
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="secondary">Your Image</Badge>
+                  </div>
+                )}
+                {myVote === image._id && (
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                    <CheckCircle className="h-12 w-12 text-primary" />
+                  </div>
+                )}
+              </div>
+              <div className="p-3">
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {image.promptText}
+                </p>
+              </div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default VotingPhase;
+```
+
+### 2. Create GeneratingPhase Component
+
+Update `src/features/game/phases/GeneratingPhase.tsx`:
+
+```tsx
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Loader2, Sparkles, Wand2 } from "lucide-react";
+
+interface GeneratingPhaseProps {
+  players: any[];
+  timeRemaining: number;
+}
+
+const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({ players, timeRemaining }) => {
+  const [currentMessage, setCurrentMessage] = useState(0);
+  
+  const messages = [
+    "AI is brewing some magic...",
+    "Mixing pixels and imagination...",
+    "Teaching robots to be creative...",
+    "Generating masterpieces...",
+    "Almost there, just adding sparkles...",
+  ];
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMessage((prev) => (prev + 1) % messages.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const submittedCount = players.filter(p => p.hasSubmitted).length;
+  const progress = (submittedCount / players.length) * 100;
+  
+  return (
+    <div className="flex flex-col items-center justify-center py-12 space-y-8">
+      <div className="relative">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+        >
+          <Wand2 className="h-16 w-16 text-primary" />
+        </motion.div>
+        <motion.div
+          className="absolute -top-2 -right-2"
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <Sparkles className="h-6 w-6 text-yellow-500" />
+        </motion.div>
+      </div>
+      
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold">Generating Images</h2>
+        <motion.p
+          key={currentMessage}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-muted-foreground"
+        >
+          {messages[currentMessage]}
+        </motion.p>
+      </div>
+      
+      <div className="w-full max-w-md space-y-2">
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>Processing prompts</span>
+          <span>{submittedCount}/{players.length}</span>
+        </div>
+        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-primary"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5 }}
+          />
+        </div>
+      </div>
+      
+      <Loader2 className="h-8 w-8 animate-spin text-primary/50" />
+      
+      <p className="text-sm text-muted-foreground">
+        Estimated time: {timeRemaining}s
+      </p>
+    </div>
+  );
+};
+
+export default GeneratingPhase;
+```
+
 ## Testing Instructions
 
 ### 1. Test API Key Configuration

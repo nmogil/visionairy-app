@@ -561,106 +561,305 @@ export const getPublicRooms = query({
 });
 ```
 
-### 3. Create Room UI Components
+### 3. Create Room Hooks
 
-Update `src/pages/Room.tsx`:
+Create `src/hooks/use-room.ts`:
 
-```tsx
-import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
+```typescript
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
-import { Copy, LogOut, Play, Settings, UserX } from "lucide-react";
-import { useState } from "react";
-import { RoomSettings } from "../components/room/RoomSettings";
+import { useAuth } from "./use-auth";
+import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect } from "react";
 
-export function Room() {
-  const { roomId } = useParams<{ roomId: string }>();
+export function useRoom(roomId: string | undefined) {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [showSettings, setShowSettings] = useState(false);
   
-  const roomState = useQuery(api.rooms.getRoomState, {
-    roomId: roomId as Id<"rooms">,
-  });
+  const roomState = useQuery(
+    api.rooms.getRoomState,
+    roomId ? { roomId: roomId as Id<"rooms"> } : "skip"
+  );
   
   const leaveRoom = useMutation(api.rooms.leaveRoom);
   const kickPlayer = useMutation(api.rooms.kickPlayer);
-  const startGame = useMutation(api.game.startGame); // Will implement in next step
+  const updateSettings = useMutation(api.rooms.updateRoomSettings);
+  const startGame = useMutation(api.game.startGame);
   
-  if (!roomState) {
-    return <div>Loading room...</div>;
+  const handleLeaveRoom = useCallback(async () => {
+    if (!roomId) return;
+    
+    try {
+      await leaveRoom({ roomId: roomId as Id<"rooms"> });
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Failed to leave room:", error);
+    }
+  }, [roomId, leaveRoom, navigate]);
+  
+  const handleKickPlayer = useCallback(async (playerId: Id<"players">) => {
+    if (!roomId) return;
+    
+    try {
+      await kickPlayer({ 
+        roomId: roomId as Id<"rooms">,
+        playerId 
+      });
+    } catch (error) {
+      console.error("Failed to kick player:", error);
+    }
+  }, [roomId, kickPlayer]);
+  
+  const handleUpdateSettings = useCallback(async (settings: any) => {
+    if (!roomId) return;
+    
+    try {
+      await updateSettings({
+        roomId: roomId as Id<"rooms">,
+        settings
+      });
+    } catch (error) {
+      console.error("Failed to update settings:", error);
+      throw error;
+    }
+  }, [roomId, updateSettings]);
+  
+  const handleStartGame = useCallback(async () => {
+    if (!roomId) return;
+    
+    try {
+      await startGame({ roomId: roomId as Id<"rooms"> });
+      // Game will automatically redirect when it starts
+    } catch (error) {
+      console.error("Failed to start game:", error);
+      throw error;
+    }
+  }, [roomId, startGame]);
+  
+  // Auto-redirect when game starts
+  useEffect(() => {
+    if (roomState?.room?.status === "playing" && roomId) {
+      navigate(`/play/${roomId}`);
+    }
+  }, [roomState?.room?.status, roomId, navigate]);
+  
+  const isHost = roomState?.currentPlayer?.isHost ?? false;
+  const currentPlayer = roomState?.currentPlayer;
+  const canStartGame = isHost && (roomState?.players?.length ?? 0) >= 2;
+  
+  return {
+    roomState,
+    isHost,
+    currentPlayer,
+    canStartGame,
+    handleLeaveRoom,
+    handleKickPlayer,
+    handleUpdateSettings,
+    handleStartGame,
+    isLoading: roomState === undefined,
+  };
+}
+
+export function useJoinRoom() {
+  const joinRoom = useMutation(api.rooms.joinRoom);
+  const navigate = useNavigate();
+  
+  const handleJoinRoom = useCallback(async (code: string) => {
+    try {
+      const result = await joinRoom({ code: code.toUpperCase() });
+      if (result.roomId) {
+        navigate(`/room/${result.roomId}`);
+        return { success: true };
+      }
+      return { success: false, error: "Room not found" };
+    } catch (error: any) {
+      console.error("Failed to join room:", error);
+      return { 
+        success: false, 
+        error: error.message || "Failed to join room" 
+      };
+    }
+  }, [joinRoom, navigate]);
+  
+  return { handleJoinRoom };
+}
+
+export function useCreateRoom() {
+  const createRoom = useMutation(api.rooms.createRoom);
+  const navigate = useNavigate();
+  
+  const handleCreateRoom = useCallback(async (name?: string, settings?: any) => {
+    try {
+      const result = await createRoom({
+        name: name || "New Game Room",
+        settings: settings || {
+          maxPlayers: 8,
+          roundsPerGame: 5,
+          promptTime: 60,
+          votingTime: 30,
+          isPublic: false,
+        }
+      });
+      
+      if (result.roomId) {
+        navigate(`/room/${result.roomId}`);
+        return { success: true, roomId: result.roomId, code: result.code };
+      }
+      return { success: false, error: "Failed to create room" };
+    } catch (error: any) {
+      console.error("Failed to create room:", error);
+      return { 
+        success: false, 
+        error: error.message || "Failed to create room" 
+      };
+    }
+  }, [createRoom, navigate]);
+  
+  return { handleCreateRoom };
+}
+```
+
+### 4. Create Room UI Components
+
+Update `src/pages/Room.tsx` with complete UI integration:
+
+```tsx
+import { useParams } from "react-router-dom";
+import { useRoom } from "../hooks/use-room";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Copy, LogOut, Play, Settings, UserX, Loader2, Users, Clock } from "lucide-react";
+import { useState } from "react";
+import { RoomSettings } from "../components/room/RoomSettings";
+import { toast } from "../hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+
+export function Room() {
+  const { roomId } = useParams();
+  const [showSettings, setShowSettings] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const {
+    roomState,
+    isHost,
+    currentPlayer,
+    canStartGame,
+    handleLeaveRoom,
+    handleKickPlayer,
+    handleUpdateSettings,
+    handleStartGame,
+    isLoading
+  } = useRoom(roomId);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
   
+  if (!roomState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-2">Room Not Found</h2>
+          <p className="text-muted-foreground mb-4">This room doesn't exist or has been deleted.</p>
+          <Button onClick={() => window.location.href = "/dashboard"}>
+            Back to Dashboard
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+  
+  const { room, players } = roomState;
+  
   const handleCopyCode = () => {
-    navigator.clipboard.writeText(roomState.room.code);
-    // Show toast notification
-  };
-  
-  const handleLeaveRoom = async () => {
-    await leaveRoom({ roomId: roomId as Id<"rooms"> });
-    navigate("/");
-  };
-  
-  const handleKickPlayer = async (playerId: Id<"players">) => {
-    await kickPlayer({ 
-      roomId: roomId as Id<"rooms">,
-      playerId 
+    navigator.clipboard.writeText(room.code);
+    setCopied(true);
+    toast({
+      title: "Room code copied!",
+      description: `Share code ${room.code} with friends`,
     });
-  };
-  
-  const handleStartGame = async () => {
-    await startGame({ roomId: roomId as Id<"rooms"> });
-    navigate(`/game/${roomId}`);
+    setTimeout(() => setCopied(false), 2000);
   };
   
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>{roomState.room.name}</CardTitle>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="outline" className="text-lg px-3 py-1">
-                {roomState.room.code}
-              </Badge>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCopyCode}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto p-4 max-w-4xl">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">{room.name}</CardTitle>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge 
+                    variant="outline" 
+                    className="text-lg px-4 py-2 font-mono cursor-pointer"
+                    onClick={handleCopyCode}
+                  >
+                    {room.code}
+                  </Badge>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={handleCopyCode}
+                  >
+                    <Copy className={`h-4 w-4 ${copied ? "scale-125" : ""}`} />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                {isHost && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowSettings(true)}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  onClick={handleLeaveRoom}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Leave
+                </Button>
+              </div>
             </div>
-          </div>
+          </CardHeader>
           
-          <div className="flex gap-2">
-            {roomState.isHost && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowSettings(true)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleLeaveRoom}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <CardContent>
-          <div className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Room Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 bg-secondary rounded-lg">
+                <p className="text-sm text-muted-foreground">Status</p>
+                <Badge className="mt-1">{room.status}</Badge>
+              </div>
+              <div className="text-center p-3 bg-secondary rounded-lg">
+                <p className="text-sm text-muted-foreground">Players</p>
+                <p className="text-2xl font-bold mt-1">
+                  {players.length}/{room.settings.maxPlayers}
+                </p>
+              </div>
+              <div className="text-center p-3 bg-secondary rounded-lg">
+                <p className="text-sm text-muted-foreground">Rounds</p>
+                <p className="text-2xl font-bold mt-1">
+                  {room.settings.roundsPerGame}
+                </p>
+              </div>
+            </div>
+            
+            {/* Players List */}
             <div>
-              <h3 className="font-semibold mb-2">
-                Players ({roomState.players.length}/{roomState.room.settings.maxPlayers})
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Players
               </h3>
               <div className="space-y-2">
                 {roomState.players.map((player) => (

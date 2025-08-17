@@ -371,6 +371,15 @@ export function useAuth() {
     needsOnboarding: user && !user.onboardingCompleted,
   };
 }
+
+// Export type for use in components
+export type AuthUser = {
+  _id: string;
+  email?: string;
+  displayName?: string;
+  isNewUser?: boolean;
+  onboardingCompleted?: boolean;
+};
 ```
 
 ### 10. Create Simple OTP Login Component
@@ -568,6 +577,177 @@ export function Login() {
 ### 11. Keep Username Dialog (unchanged)
 
 The `src/components/auth/UsernameDialog.tsx` component remains the same as it works for both OTP and password auth.
+
+### 12. Create Protected Route Component
+
+Create `src/components/auth/ProtectedRoute.tsx`:
+
+```tsx
+import { ReactNode } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../hooks/use-auth";
+import { Loader2 } from "lucide-react";
+import { UsernameDialog } from "./UsernameDialog";
+
+interface ProtectedRouteProps {
+  children: ReactNode;
+  requireOnboarding?: boolean;
+}
+
+export function ProtectedRoute({ children, requireOnboarding = true }: ProtectedRouteProps) {
+  const { user, isLoading, isAuthenticated, needsOnboarding } = useAuth();
+  const location = useLocation();
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Show username dialog if onboarding not completed
+  if (requireOnboarding && needsOnboarding) {
+    return <UsernameDialog />;
+  }
+
+  return <>{children}</>;
+}
+```
+
+### 13. Update App Router with Auth Protection
+
+Update `src/App.tsx`:
+
+```tsx
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "./components/layout/ThemeProvider";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { useAuth } from "./hooks/use-auth";
+
+// Pages
+import LandingPage from "./pages/LandingPage";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
+import Room from "./pages/Room";
+import GameClient from "./pages/GameClient";
+import NotFound from "./pages/NotFound";
+
+function App() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <ThemeProvider defaultTheme="dark" storageKey="visionairy-theme">
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LandingPage />} />
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Signup />} />
+          
+          {/* Protected routes */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/room/:roomId" element={
+            <ProtectedRoute>
+              <Room />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/play/:roomId" element={
+            <ProtectedRoute>
+              <GameClient />
+            </ProtectedRoute>
+          } />
+          
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ThemeProvider>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+```
+
+### 14. Create Auth Layout Component
+
+Create `src/components/auth/AuthLayout.tsx`:
+
+```tsx
+import { ReactNode } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+interface AuthLayoutProps {
+  children: ReactNode;
+  title: string;
+  description?: string;
+  showBackButton?: boolean;
+}
+
+export function AuthLayout({ 
+  children, 
+  title, 
+  description,
+  showBackButton = true 
+}: AuthLayoutProps) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <div className="w-full max-w-md">
+        {showBackButton && (
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/")}
+            className="mb-4 -ml-2"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Home
+          </Button>
+        )}
+        
+        <Card>
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">
+              {title}
+            </CardTitle>
+            {description && (
+              <CardDescription className="text-center">
+                {description}
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>{children}</CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+```
 
 ## How New vs Existing Users Work
 

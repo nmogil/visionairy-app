@@ -902,6 +902,380 @@ export const getGameState = query({
 });
 ```
 
+## UI Integration
+
+### 1. Create Game Hooks
+
+Create `src/hooks/use-game.ts`:
+
+```typescript
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "./use-toast";
+
+export function useGame(roomId: string | undefined) {
+  const navigate = useNavigate();
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  
+  const gameState = useQuery(
+    api.game.getGameState,
+    roomId ? { roomId: roomId as Id<"rooms"> } : "skip"
+  );
+  
+  const submitPrompt = useMutation(api.game.submitPrompt);
+  const submitVote = useMutation(api.game.submitVote);
+  const skipPrompt = useMutation(api.game.skipPrompt);
+  
+  // Handle prompt submission
+  const handleSubmitPrompt = useCallback(async (prompt: string) => {
+    if (!roomId) return;
+    
+    try {
+      await submitPrompt({
+        roomId: roomId as Id<"rooms">,
+        prompt: prompt.trim()
+      });
+      toast({
+        title: "Prompt submitted!",
+        description: "Waiting for other players..."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to submit prompt",
+        description: error.message || "Please try again",
+        variant: "destructive"
+      });
+    }
+  }, [roomId, submitPrompt]);
+  
+  // Handle vote submission
+  const handleSubmitVote = useCallback(async (imageId: Id<"generatedImages">) => {
+    if (!roomId) return;
+    
+    try {
+      await submitVote({
+        roomId: roomId as Id<"rooms">,
+        imageId
+      });
+      toast({
+        title: "Vote submitted!",
+        description: "Waiting for results..."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to submit vote",
+        description: error.message || "Please try again",
+        variant: "destructive"
+      });
+    }
+  }, [roomId, submitVote]);
+  
+  // Handle skip (if player doesn't submit in time)
+  const handleSkipPrompt = useCallback(async () => {
+    if (!roomId) return;
+    
+    try {
+      await skipPrompt({
+        roomId: roomId as Id<"rooms">
+      });
+    } catch (error) {
+      console.error("Failed to skip prompt:", error);
+    }
+  }, [roomId, skipPrompt]);
+  
+  // Timer countdown effect
+  useEffect(() => {
+    if (!gameState?.round) return;
+    
+    const endTime = gameState.round.phaseEndTime;
+    if (!endTime) return;
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+      setTimeRemaining(remaining);
+      
+      if (remaining === 0 && gameState.round?.status === "prompting" && !gameState.myPrompt) {
+        handleSkipPrompt();
+      }
+    };
+    
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [gameState?.round, handleSkipPrompt, gameState?.myPrompt]);
+  
+  // Auto-redirect when game ends
+  useEffect(() => {
+    if (gameState?.room?.status === "finished" && roomId) {
+      setTimeout(() => {
+        navigate(`/room/${roomId}`);
+        toast({
+          title: "Game Over!",
+          description: "Thanks for playing!"
+        });
+      }, 5000);
+    }
+  }, [gameState?.room?.status, roomId, navigate]);
+  
+  const currentPhase = gameState?.round?.status || "waiting";
+  const hasSubmittedPrompt = !!gameState?.myPrompt;
+  const hasVoted = !!gameState?.myVote;
+  
+  return {
+    gameState,
+    currentPhase,
+    timeRemaining,
+    hasSubmittedPrompt,
+    hasVoted,
+    handleSubmitPrompt,
+    handleSubmitVote,
+    isLoading: gameState === undefined,
+  };
+}
+```
+
+### 2. Update GameClient Component
+
+Update `src/pages/GameClient.tsx`:
+
+```tsx
+import { useParams, useNavigate } from "react-router-dom";
+import { useGame } from "../hooks/use-game";
+import { Helmet } from "react-helmet-async";
+import { Button } from "@/components/ui/8bit/button";
+import { Card } from "@/components/ui/8bit/card";
+import { Loader2, ArrowLeft } from "lucide-react";
+import GameTopBar from "@/features/game/GameTopBar";
+import PlayerSidebar from "@/features/game/PlayerSidebar";
+import PhaseContainer from "@/features/game/PhaseContainer";
+
+const GameClient: React.FC = () => {
+  const { roomId } = useParams();
+  const navigate = useNavigate();
+  
+  const {
+    gameState,
+    currentPhase,
+    timeRemaining,
+    hasSubmittedPrompt,
+    hasVoted,
+    handleSubmitPrompt,
+    handleSubmitVote,
+    isLoading
+  } = useGame(roomId);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (!gameState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-2">Game Not Found</h2>
+          <p className="text-muted-foreground mb-4">This game doesn't exist or has ended.</p>
+          <Button onClick={() => navigate("/dashboard")}>
+            Back to Dashboard
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+  
+  const { room, round, players, images, myPrompt, myVote } = gameState;
+  
+  const handleLeave = () => {
+    navigate(`/room/${roomId}`);
+  };
+  
+  const title = `Game - Round ${room.currentRound}/${room.totalRounds}`;
+  const description = `Playing round ${room.currentRound} of ${room.totalRounds}`;
+  const canonical = `${window.location.origin}/play/${roomId}`;
+  
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonical} />
+      </Helmet>
+      
+      <header className="border-b border-border">
+        <GameTopBar
+          roomCode={roomId?.slice(-6).toUpperCase() || ""}
+          currentRound={room.currentRound}
+          totalRounds={room.totalRounds}
+          onLeave={handleLeave}
+        />
+      </header>
+      
+      <main className="container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <section className="lg:col-span-8 space-y-4">
+          <Card className="p-4">
+            <PhaseContainer
+              phase={currentPhase}
+              timeRemaining={timeRemaining}
+              currentQuestion={round?.question || ""}
+              players={players}
+              images={images}
+              myPrompt={myPrompt}
+              myVote={myVote}
+              hasSubmittedPrompt={hasSubmittedPrompt}
+              hasVoted={hasVoted}
+              onSubmitPrompt={handleSubmitPrompt}
+              onVote={handleSubmitVote}
+            />
+          </Card>
+        </section>
+        
+        <aside className="lg:col-span-4">
+          <PlayerSidebar
+            players={players}
+            currentPhase={currentPhase}
+            timeRemaining={timeRemaining}
+          />
+        </aside>
+        
+        <div className="lg:col-span-12 flex justify-center pt-2">
+          <Button variant="outline" onClick={handleLeave}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Room
+          </Button>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default GameClient;
+```
+
+### 3. Update PhaseContainer
+
+Update `src/features/game/PhaseContainer.tsx`:
+
+```tsx
+import React from "react";
+import PromptPhase from "./phases/PromptPhase";
+import GeneratingPhase from "./phases/GeneratingPhase";
+import VotingPhase from "./phases/VotingPhase";
+import ResultsPhase from "./phases/ResultsPhase";
+import GameOverPhase from "./phases/GameOverPhase";
+import { Id } from "../../../convex/_generated/dataModel";
+
+export type GamePhase = "prompting" | "generating" | "voting" | "results" | "finished";
+
+interface Player {
+  _id: Id<"players">;
+  displayName: string;
+  score: number;
+  hasSubmitted?: boolean;
+  hasVoted?: boolean;
+}
+
+interface Image {
+  _id: Id<"generatedImages">;
+  promptId: Id<"prompts">;
+  imageUrl: string;
+  promptText: string;
+  voteCount: number;
+  isWinner?: boolean;
+  isOwn?: boolean;
+}
+
+interface PhaseContainerProps {
+  phase: GamePhase | string;
+  timeRemaining: number;
+  currentQuestion: string;
+  players: Player[];
+  images: Image[];
+  myPrompt?: string;
+  myVote?: Id<"generatedImages">;
+  hasSubmittedPrompt: boolean;
+  hasVoted: boolean;
+  onSubmitPrompt: (prompt: string) => void;
+  onVote: (imageId: Id<"generatedImages">) => void;
+}
+
+const PhaseContainer: React.FC<PhaseContainerProps> = ({
+  phase,
+  timeRemaining,
+  currentQuestion,
+  players,
+  images,
+  myPrompt,
+  myVote,
+  hasSubmittedPrompt,
+  hasVoted,
+  onSubmitPrompt,
+  onVote,
+}) => {
+  switch (phase) {
+    case "prompting":
+      return (
+        <PromptPhase
+          currentQuestion={currentQuestion}
+          timeRemaining={timeRemaining}
+          hasSubmitted={hasSubmittedPrompt}
+          myPrompt={myPrompt}
+          players={players}
+          onSubmitPrompt={onSubmitPrompt}
+        />
+      );
+    
+    case "generating":
+      return (
+        <GeneratingPhase
+          players={players}
+          timeRemaining={timeRemaining}
+        />
+      );
+    
+    case "voting":
+      return (
+        <VotingPhase
+          currentQuestion={currentQuestion}
+          images={images}
+          hasVoted={hasVoted}
+          myVote={myVote}
+          timeRemaining={timeRemaining}
+          onVote={onVote}
+        />
+      );
+    
+    case "results":
+      return (
+        <ResultsPhase
+          currentQuestion={currentQuestion}
+          images={images}
+          players={players}
+          timeRemaining={timeRemaining}
+        />
+      );
+    
+    case "finished":
+      return <GameOverPhase players={players} />;
+    
+    default:
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Waiting for game to start...</p>
+        </div>
+      );
+  }
+};
+
+export default PhaseContainer;
+```
+
 ## Testing Instructions
 
 ### 1. Seed Question Cards

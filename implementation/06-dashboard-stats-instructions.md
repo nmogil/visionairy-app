@@ -660,24 +660,112 @@ export const updateLeaderboards = internalMutation({
 });
 ```
 
-### 3. Create Dashboard UI
+### 3. Create Dashboard Hooks
+
+Create `src/hooks/use-dashboard.ts`:
+
+```typescript
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useAuth } from "./use-auth";
+import { useMemo } from "react";
+
+export type Period = "daily" | "weekly" | "monthly" | "allTime";
+
+export function useDashboard() {
+  const { user } = useAuth();
+  const dashboardData = useQuery(api.stats.getDashboardData);
+  const achievements = useQuery(api.stats.getUserAchievements);
+  
+  const getLeaderboard = (period: Period = "allTime", limit: number = 10) => {
+    return useQuery(api.stats.getLeaderboard, { period, limit });
+  };
+  
+  const stats = useMemo(() => {
+    if (!dashboardData) return null;
+    
+    return {
+      totalGames: dashboardData.stats?.gamesPlayed || 0,
+      totalWins: dashboardData.stats?.gamesWon || 0,
+      winRate: dashboardData.stats?.winRate || 0,
+      currentStreak: dashboardData.stats?.currentStreak || 0,
+      bestStreak: dashboardData.stats?.bestStreak || 0,
+      favoriteQuestionType: dashboardData.stats?.favoriteQuestionType || "N/A",
+      totalVotes: dashboardData.stats?.totalVotes || 0,
+      perfectGames: dashboardData.stats?.perfectGames || 0,
+    };
+  }, [dashboardData]);
+  
+  const recentGames = dashboardData?.recentGames || [];
+  const topPlayers = dashboardData?.topPlayers || [];
+  
+  const unlockedAchievements = achievements?.filter(a => a.unlockedAt) || [];
+  const lockedAchievements = achievements?.filter(a => !a.unlockedAt) || [];
+  
+  return {
+    stats,
+    recentGames,
+    topPlayers,
+    unlockedAchievements,
+    lockedAchievements,
+    getLeaderboard,
+    isLoading: !dashboardData,
+    user,
+  };
+}
+
+export function useRoomHistory() {
+  const roomHistory = useQuery(api.stats.getRoomHistory, { limit: 20 });
+  
+  const activeRooms = roomHistory?.filter(r => r.status === "active") || [];
+  const completedRooms = roomHistory?.filter(r => r.status === "completed") || [];
+  
+  return {
+    roomHistory: roomHistory || [],
+    activeRooms,
+    completedRooms,
+    isLoading: !roomHistory,
+  };
+}
+```
+
+### 4. Create Dashboard UI
 
 Update `src/pages/Dashboard.tsx`:
 
 ```tsx
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useState } from "react";
+import { useDashboard, useRoomHistory, Period } from "../hooks/use-dashboard";
+import { useCreateRoom, useJoinRoom } from "../hooks/use-room";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
 import { Progress } from "../components/ui/progress";
-import { Trophy, Target, Flame, Star, TrendingUp, Calendar } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { 
+  Trophy, Target, Flame, Star, TrendingUp, Calendar, 
+  Users, GameController2, Plus, LogIn, Loader2, Crown
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { motion } from "framer-motion";
 
 export function Dashboard() {
-  const dashboardData = useQuery(api.stats.getDashboardData);
-  const leaderboard = useQuery(api.stats.getLeaderboard, { 
-    period: "allTime",
-    limit: 5 
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<Period>("allTime");
+  const { 
+    stats, 
+    recentGames, 
+    topPlayers, 
+    unlockedAchievements,
+    getLeaderboard,
+    isLoading,
+    user 
+  } = useDashboard();
+  
+  const { activeRooms } = useRoomHistory();
+  const { handleCreateRoom } = useCreateRoom();
+  const { handleJoinRoom } = useJoinRoom();
+  
+  const leaderboard = getLeaderboard(leaderboardPeriod, 5 
   });
   
   if (!dashboardData) {
