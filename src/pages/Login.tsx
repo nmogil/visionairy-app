@@ -34,7 +34,9 @@ const Login = () => {
 
   // Stop loading when auth state updates after OTP verification
   useEffect(() => {
-    if (step === "code" && (isAuthenticated || error)) {
+    if (step === "code" && isAuthenticated) {
+      setLoading(false);
+    } else if (step === "code" && error) {
       setLoading(false);
     }
   }, [step, isAuthenticated, error]);
@@ -70,7 +72,7 @@ const Login = () => {
       await signIn("resend-otp", formData);
       console.log("Sign in successful, waiting for auth state to update...");
       
-      // Don't navigate immediately - let the useEffect handle navigation when auth state updates
+      // The useEffect will handle navigation when isAuthenticated becomes true
     } catch (err) {
       console.error("Sign in error:", err);
       setError("Invalid or expired code. Please try again.");
