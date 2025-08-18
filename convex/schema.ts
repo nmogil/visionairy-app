@@ -29,4 +29,48 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_username", ["username"]),
+
+  // Room management tables
+  rooms: defineTable({
+    code: v.string(),
+    name: v.string(),
+    hostId: v.id("users"),
+    status: v.union(
+      v.literal("waiting"),
+      v.literal("starting"),
+      v.literal("playing"),
+      v.literal("finished")
+    ),
+    settings: v.object({
+      maxPlayers: v.number(),
+      roundsPerGame: v.number(),
+      timePerRound: v.number(),
+      isPrivate: v.boolean(),
+      allowLateJoin: v.boolean(),
+    }),
+    currentRound: v.optional(v.number()),
+    createdAt: v.number(),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+  })
+    .index("by_code", ["code"])
+    .index("by_status", ["status"])
+    .index("by_host", ["hostId"]),
+  
+  players: defineTable({
+    roomId: v.id("rooms"),
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("connected"),
+      v.literal("disconnected"),
+      v.literal("kicked")
+    ),
+    isHost: v.boolean(),
+    score: v.number(),
+    joinedAt: v.number(),
+    lastSeenAt: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_user", ["userId"])
+    .index("by_room_and_user", ["roomId", "userId"]),
 });
