@@ -135,14 +135,14 @@ const PromptPhase: React.FC<PromptPhaseProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [prompt, hasSubmitted]);
+  }, [prompt, hasSubmitted, handleSubmit]);
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(() => {
     if (!prompt.trim() || hasSubmitted || hasProfanity) return;
     onSubmitPrompt(prompt.trim());
     setShowSubmitted(true);
     setTimeout(() => setShowSubmitted(false), 3000);
-  };
+  }, [prompt, hasSubmitted, hasProfanity, onSubmitPrompt]);
 
   const getCharacterCountColor = () => {
     if (remaining < 20) return "text-destructive";

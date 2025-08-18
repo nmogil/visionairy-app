@@ -38,7 +38,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     }
   }, [isOpen]);
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (event: PointerEvent, info: PanInfo) => {
     const { offset, velocity } = info;
     const threshold = 100;
     const velocityThreshold = 500;

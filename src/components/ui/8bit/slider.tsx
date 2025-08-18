@@ -9,8 +9,8 @@ export const Slider: React.FC<SliderProps> = ({ onChange, onValueChange, ...rest
   return (
     <BaseSlider
       {...rest}
-      onValueChange={(v) => {
-        onValueChange?.(v as any);
+      onValueChange={(v: number[]) => {
+        onValueChange?.(v);
         onChange?.(v);
       }}
     />

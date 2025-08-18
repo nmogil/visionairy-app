@@ -1,8 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export interface RetroInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+export type RetroInputProps = React.InputHTMLAttributes<HTMLInputElement>
 
 export const RetroInput = React.forwardRef<HTMLInputElement, RetroInputProps>(
   ({ className, ...props }, ref) => {

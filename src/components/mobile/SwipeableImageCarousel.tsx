@@ -28,7 +28,7 @@ const SwipeableImageCarousel: React.FC<SwipeableImageCarouselProps> = ({
   
   const constraintsRef = useRef<HTMLDivElement>(null);
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (event: PointerEvent, info: PanInfo) => {
     const { offset, velocity } = info;
     const swipeThreshold = 100;
     const velocityThreshold = 500;

@@ -312,7 +312,7 @@ const Lightbox: React.FC<{
     setPosition({ x: 0, y: 0 });
   };
 
-  const handleDrag = (event: any, info: PanInfo) => {
+  const handleDrag = (event: PointerEvent, info: PanInfo) => {
     if (zoom > 1) {
       setPosition({
         x: position.x + info.delta.x,

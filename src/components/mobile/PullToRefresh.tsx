@@ -28,7 +28,7 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
     }
   };
 
-  const handleDrag = (event: any, info: PanInfo) => {
+  const handleDrag = (event: PointerEvent, info: PanInfo) => {
     if (!isPulling) return;
 
     const distance = Math.max(0, info.offset.y);
@@ -38,7 +38,7 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
     setPullDistance(constrainedDistance);
   };
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (event: PointerEvent, info: PanInfo) => {
     if (!isPulling) return;
 
     setIsPulling(false);

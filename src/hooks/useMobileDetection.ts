@@ -56,7 +56,7 @@ export const useMobileDetection = (): MobileDetectionResult => {
       
       // PWA detection
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                          (window.navigator as any).standalone === true;
+                          (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
       
       // Can install PWA (simplified check)
       const canInstallPWA = !isStandalone && 'serviceWorker' in navigator;

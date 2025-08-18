@@ -4,19 +4,24 @@ import { Download, X, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 interface PWAInstallPromptProps {
   className?: string;
 }
 
 const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({ className }) => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
     // Check if already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-    const isInApp = (window.navigator as any).standalone === true;
+    const isInApp = (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
     
     if (isStandalone || isInApp) {
       setIsInstalled(true);

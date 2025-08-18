@@ -26,7 +26,7 @@ const Header = () => {
                 </MenubarItem>
                 <MenubarSeparator />
                 <MenubarLabel>Theme</MenubarLabel>
-                <MenubarRadioGroup value={theme ?? "system"} onValueChange={(v) => setTheme(v as any)}>
+                <MenubarRadioGroup value={theme ?? "system"} onValueChange={(v: string) => setTheme(v)}>
                   <MenubarRadioItem value="light">
                     <Sun className="mr-2 h-4 w-4" /> Light
                   </MenubarRadioItem>
