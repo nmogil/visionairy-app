@@ -5,27 +5,12 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 // Get current authenticated user using Convex Auth pattern
 export const getCurrentUser = query({
   args: {},
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("users"),
-      email: v.optional(v.string()),
-      username: v.optional(v.string()),
-      displayName: v.optional(v.string()),
-      avatarId: v.optional(v.id("_storage")),
-      onboardingCompleted: v.optional(v.boolean()),
-      isNewUser: v.optional(v.boolean()),
-      gamesPlayed: v.optional(v.number()),
-      gamesWon: v.optional(v.number()),
-      totalScore: v.optional(v.number()),
-      isAnonymous: v.optional(v.boolean()),
-    })
-  ),
   handler: async (ctx) => {
+    // Use getAuthUserId for consistent authentication - works for both authenticated and anonymous users
     const userId = await getAuthUserId(ctx);
     if (!userId) return null;
     
-    // Get the user from the database
+    // Get the user from the database directly by userId
     const user = await ctx.db.get(userId);
     return user;
   },
@@ -39,6 +24,8 @@ export const updateUsername = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     console.log("updateUsername called with args:", args);
+    
+    // Use the same authentication pattern as room creation - getAuthUserId works for both authenticated and anonymous users
     const userId = await getAuthUserId(ctx);
     console.log("getAuthUserId returned:", userId);
     if (!userId) {

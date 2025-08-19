@@ -9,7 +9,7 @@ export default defineSchema({
   users: defineTable({
     // Auth fields (managed by Convex Auth)
     email: v.optional(v.string()),
-    emailVerificationTime: v.optional(v.number()),
+    emailVerificationTime: v.optional(v.float64()),
     image: v.optional(v.string()),
     isAnonymous: v.optional(v.boolean()),
     name: v.optional(v.string()),
@@ -18,14 +18,14 @@ export default defineSchema({
     username: v.optional(v.string()),
     displayName: v.optional(v.string()),
     avatarId: v.optional(v.id("_storage")),
-    lastActiveAt: v.optional(v.number()),
+    lastActiveAt: v.optional(v.float64()),
     onboardingCompleted: v.optional(v.boolean()),
     isNewUser: v.optional(v.boolean()), // Track if user just signed up
     
     // Game statistics
-    gamesPlayed: v.optional(v.number()),
-    gamesWon: v.optional(v.number()),
-    totalScore: v.optional(v.number()),
+    gamesPlayed: v.optional(v.float64()),
+    gamesWon: v.optional(v.float64()),
+    totalScore: v.optional(v.float64()),
   })
     .index("by_email", ["email"])
     .index("by_username", ["username"]),
@@ -42,16 +42,16 @@ export default defineSchema({
       v.literal("finished")
     ),
     settings: v.object({
-      maxPlayers: v.number(),
-      roundsPerGame: v.number(),
-      timePerRound: v.number(),
+      maxPlayers: v.float64(),
+      roundsPerGame: v.float64(),
+      timePerRound: v.float64(),
       isPrivate: v.boolean(),
       allowLateJoin: v.boolean(),
     }),
-    currentRound: v.optional(v.number()),
-    createdAt: v.number(),
-    startedAt: v.optional(v.number()),
-    finishedAt: v.optional(v.number()),
+    currentRound: v.optional(v.float64()),
+    createdAt: v.float64(),
+    startedAt: v.optional(v.float64()),
+    finishedAt: v.optional(v.float64()),
   })
     .index("by_code", ["code"])
     .index("by_status", ["status"])
@@ -66,9 +66,9 @@ export default defineSchema({
       v.literal("kicked")
     ),
     isHost: v.boolean(),
-    score: v.number(),
-    joinedAt: v.number(),
-    lastSeenAt: v.number(),
+    score: v.float64(),
+    joinedAt: v.float64(),
+    lastSeenAt: v.float64(),
   })
     .index("by_room", ["roomId"])
     .index("by_user", ["userId"])
