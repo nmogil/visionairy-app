@@ -3,20 +3,23 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Room from "./pages/Room";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { HelmetProvider } from "react-helmet-async";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import GameClient from "./pages/GameClient";
-import Dashboard from "./pages/Dashboard";
-import ImageGridDemo from "./pages/ImageGridDemo";
-import InteractionsStyleGuide from "./components/interactions/InteractionsStyleGuide";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
+import { createLazyRoute } from "@/utils/lazy";
+
+// Lazy load page components for better bundle splitting
+const Index = createLazyRoute(() => import("./pages/Index"), "homepage");
+const NotFound = createLazyRoute(() => import("./pages/NotFound"), "404 page");
+const Room = createLazyRoute(() => import("./pages/Room"), "room lobby");
+const Login = createLazyRoute(() => import("./pages/Login"), "login");
+const Signup = createLazyRoute(() => import("./pages/Signup"), "signup");
+const GameClient = createLazyRoute(() => import("./pages/GameClient"), "game");
+const Dashboard = createLazyRoute(() => import("./pages/Dashboard"), "dashboard");
+const ImageGridDemo = createLazyRoute(() => import("./pages/ImageGridDemo"), "image grid demo");
+const InteractionsStyleGuide = createLazyRoute(() => import("./components/interactions/InteractionsStyleGuide"), "style guide");
 
 const queryClient = new QueryClient();
 

@@ -36,6 +36,7 @@ const Room = () => {
     handleLeaveRoom,
     handleKickPlayer,
     handleUpdateSettings,
+    handleStartGame,
     isLoading: roomLoading,
   } = useRoom(roomId);
 
@@ -77,14 +78,15 @@ const Room = () => {
     }
   };
 
-  const handleStartGame = async () => {
+  const handleGameStart = async () => {
     if (!canStartGame || !roomId) {
       toast.error("Cannot start game yet");
       return;
     }
     
     try {
-      // For now, navigate to game page - actual start game mutation will be added later
+      await handleStartGame();
+      toast.success("Game started!");
       navigate(`/play/${roomId}`);
     } catch (error) {
       console.error("Failed to start game:", error);
@@ -357,7 +359,7 @@ const Room = () => {
             <div className="space-y-4">
               <Button
                 size="xl"
-                onClick={handleStartGame}
+                onClick={handleGameStart}
                 disabled={!canStartGame}
                 variant="neon"
                 aria-label="Start Game"
@@ -387,7 +389,7 @@ const Room = () => {
             <Button
               className="flex-1"
               size="lg"
-              onClick={handleStartGame}
+              onClick={handleGameStart}
               disabled={!canStartGame}
               variant="neon"
               aria-label="Start Game"

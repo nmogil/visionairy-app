@@ -17,6 +17,7 @@ export function useRoom(roomId: string | undefined) {
   const leaveRoom = useMutation(api.rooms.leaveRoom);
   const kickPlayer = useMutation(api.rooms.kickPlayer);
   const updateSettings = useMutation(api.rooms.updateRoomSettings);
+  const startGame = useMutation(api.game.startGame);
   
   const handleLeaveRoom = useCallback(async () => {
     if (!roomId) return;
@@ -63,6 +64,18 @@ export function useRoom(roomId: string | undefined) {
     }
   }, [roomId, updateSettings]);
   
+  const handleStartGame = useCallback(async () => {
+    if (!roomId) return;
+    
+    try {
+      await startGame({ roomId: roomId as Id<"rooms"> });
+      // Game will automatically redirect when it starts
+    } catch (error) {
+      console.error("Failed to start game:", error);
+      throw error;
+    }
+  }, [roomId, startGame]);
+  
   // Auto-redirect when game starts
   useEffect(() => {
     if (roomState?.room?.status === "playing" && roomId) {
@@ -80,6 +93,7 @@ export function useRoom(roomId: string | undefined) {
     handleLeaveRoom,
     handleKickPlayer,
     handleUpdateSettings,
+    handleStartGame,
     isLoading: roomState === undefined,
     error: null, // Error handling can be added later if needed
   };
