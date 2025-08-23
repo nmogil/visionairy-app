@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -38,7 +38,7 @@ export const getCurrentUser = query({
 });
 
 // Helper function for reliable user authentication with better error handling
-const getAuthenticatedUser = async (ctx: any) => {
+const getAuthenticatedUser = async (ctx: MutationCtx) => {
   const userId = await getAuthUserId(ctx);
   if (!userId) {
     throw new Error("AUTHENTICATION_REQUIRED");
@@ -90,12 +90,13 @@ export const updateUsername = mutation({
       });
       
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Convert internal errors to user-friendly messages
-      if (error.message === "AUTHENTICATION_REQUIRED") {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (errorMessage === "AUTHENTICATION_REQUIRED") {
         throw new Error("Authentication required. Please refresh the page and try again.");
       }
-      if (error.message === "USER_NOT_FOUND") {
+      if (errorMessage === "USER_NOT_FOUND") {
         throw new Error("User account not found. Please refresh the page and try again.");
       }
       // Re-throw other errors as-is
@@ -148,12 +149,13 @@ export const completeOnboarding = mutation({
       });
       
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Convert internal errors to user-friendly messages
-      if (error.message === "AUTHENTICATION_REQUIRED") {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (errorMessage === "AUTHENTICATION_REQUIRED") {
         throw new Error("Authentication required. Please refresh the page and try again.");
       }
-      if (error.message === "USER_NOT_FOUND") {
+      if (errorMessage === "USER_NOT_FOUND") {
         throw new Error("User account not found. Please refresh the page and try again.");
       }
       // Re-throw other errors as-is

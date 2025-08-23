@@ -8,6 +8,38 @@ import { AvatarStep } from "./steps/AvatarStep";
 import { CompletionStep } from "./steps/CompletionStep";
 import { useAuth } from "@/hooks/use-auth";
 
+// Avatar data interface
+interface AvatarData {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+}
+
+// Onboarding step data interfaces
+interface UsernameStepData {
+  username: string;
+}
+
+interface DisplayNameStepData {
+  displayName: string;
+}
+
+interface AvatarStepData {
+  avatarId: string | null;
+  avatarData: AvatarData | null;
+}
+
+// Complete onboarding data structure
+interface OnboardingData {
+  username?: UsernameStepData;
+  display?: DisplayNameStepData;
+  avatar?: AvatarStepData;
+}
+
+// Union type for step-specific data
+type StepData = UsernameStepData | DisplayNameStepData | AvatarStepData | undefined;
+
 interface OnboardingStep {
   id: string;
   title: string;
@@ -17,10 +49,10 @@ interface OnboardingStep {
 }
 
 export interface OnboardingStepProps {
-  onNext: (data?: any) => void;
+  onNext: (data?: StepData) => void;
   onBack: () => void;
   onError: (error: string) => void;
-  data: Record<string, any>;
+  data: OnboardingData;
   isFirst: boolean;
   isLast: boolean;
 }
@@ -70,7 +102,7 @@ interface OnboardingWizardProps {
 
 export function OnboardingWizard({ open, onComplete }: OnboardingWizardProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [onboardingData, setOnboardingData] = useState<Record<string, any>>({});
+  const [onboardingData, setOnboardingData] = useState<OnboardingData>({});
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
@@ -86,7 +118,7 @@ export function OnboardingWizard({ open, onComplete }: OnboardingWizardProps) {
     }
   }, [open]);
 
-  const handleNext = (data?: any) => {
+  const handleNext = (data?: StepData) => {
     setError(null);
     
     if (data) {
