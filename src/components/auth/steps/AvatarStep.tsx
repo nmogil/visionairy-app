@@ -21,7 +21,7 @@ export function AvatarStep({ onNext, onBack, data }: OnboardingStepProps) {
 
   const handleContinue = () => {
     onNext({
-      avatarId: selectedAvatar, // In a real implementation, this would be a storage ID
+      avatarId: selectedAvatar, // String-based avatar ID (matches schema)
       avatarData: selectedAvatar ? defaultAvatars.find(a => a.id === selectedAvatar) : null
     });
   };
