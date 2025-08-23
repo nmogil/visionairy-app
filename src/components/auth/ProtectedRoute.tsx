@@ -22,7 +22,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
       setIsSigningIn(true);
       signIn("anonymous")
         .then(() => {
-          console.log("Anonymous sign-in successful");
+          // Don't immediately set isSigningIn to false - wait for auth state to be fully established
         })
         .catch((error) => {
           console.error("Anonymous sign-in failed:", error);
@@ -30,6 +30,13 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
         });
     }
   }, [isLoading, isAuthenticated, isSigningIn, signIn]);
+
+  // Reset signing in state once we're authenticated and user is loaded
+  useEffect(() => {
+    if (isAuthenticated && user !== undefined && isSigningIn) {
+      setIsSigningIn(false);
+    }
+  }, [isAuthenticated, user, isSigningIn]);
 
   // Show loading state while checking auth or signing in
   if (isLoading || isSigningIn) {

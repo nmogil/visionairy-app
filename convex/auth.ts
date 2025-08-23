@@ -6,33 +6,32 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [ResendOTP, Anonymous],
   callbacks: {
     async createOrUpdateUser(ctx, args) {
-      // Check if this is an existing user
-      const existingUser = args.existingUserId 
-        ? await ctx.db.get(args.existingUserId)
-        : null;
-        
-      if (existingUser) {
-        // EXISTING USER - just update last active time
-        await ctx.db.patch(existingUser._id, {
-          lastActiveAt: Date.now(),
-          isNewUser: false, // Ensure it's marked as not new
-        });
-        return existingUser._id;
+      // For existing users, try to update them
+      if (args.existingUserId) {
+        const existingUser = await ctx.db.get(args.existingUserId);
+        if (existingUser) {
+          await ctx.db.patch(existingUser._id, {
+            lastActiveAt: Date.now(),
+          });
+          return existingUser._id;
+        }
+        // If existingUserId is provided but user not found, create new user
       }
       
-      // NEW USER - create with default values
-      const userId = await ctx.db.insert("users", {
+      // Create new user (or replace corrupted user)
+      const userData = {
         ...args.profile,
         email: args.profile?.email,
         isAnonymous: args.provider?.id === "anonymous",
         lastActiveAt: Date.now(),
         onboardingCompleted: false,
-        isNewUser: true, // Mark as new user
+        isNewUser: true,
         gamesPlayed: 0,
         gamesWon: 0,
         totalScore: 0,
-      });
+      };
       
+      const userId = await ctx.db.insert("users", userData);
       return userId;
     },
   },

@@ -5,6 +5,27 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 // Get current authenticated user using Convex Auth pattern
 export const getCurrentUser = query({
   args: {},
+  returns: v.union(
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      email: v.optional(v.string()),
+      emailVerificationTime: v.optional(v.number()),
+      image: v.optional(v.string()),
+      isAnonymous: v.optional(v.boolean()),
+      name: v.optional(v.string()),
+      username: v.optional(v.string()),
+      displayName: v.optional(v.string()),
+      avatarId: v.optional(v.id("_storage")),
+      lastActiveAt: v.optional(v.number()),
+      onboardingCompleted: v.optional(v.boolean()),
+      isNewUser: v.optional(v.boolean()),
+      gamesPlayed: v.optional(v.number()),
+      gamesWon: v.optional(v.number()),
+      totalScore: v.optional(v.number()),
+    }),
+    v.null()
+  ),
   handler: async (ctx) => {
     // Use getAuthUserId for consistent authentication - works for both authenticated and anonymous users
     const userId = await getAuthUserId(ctx);
@@ -23,14 +44,17 @@ export const updateUsername = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    console.log("updateUsername called with args:", args);
-    
     // Use the same authentication pattern as room creation - getAuthUserId works for both authenticated and anonymous users
     const userId = await getAuthUserId(ctx);
-    console.log("getAuthUserId returned:", userId);
+    
     if (!userId) {
-      console.error("Authentication failed - userId is null");
-      throw new Error("Not authenticated");
+      throw new Error("Authentication required. Please refresh the page and try again.");
+    }
+    
+    // Verify the user exists in the database
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User account not found. Please refresh the page and try again.");
     }
     
     // Validate username format
@@ -53,7 +77,6 @@ export const updateUsername = mutation({
     }
     
     // Update user profile
-    console.log("Updating user profile for userId:", userId);
     await ctx.db.patch(userId, {
       username: args.username,
       displayName: args.username,
@@ -61,7 +84,6 @@ export const updateUsername = mutation({
       isNewUser: false, // No longer a new user after onboarding
     });
     
-    console.log("Username update completed successfully");
     return null;
   },
 });
