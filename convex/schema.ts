@@ -73,4 +73,70 @@ export default defineSchema({
     .index("by_room", ["roomId"])
     .index("by_user", ["userId"])
     .index("by_room_and_user", ["roomId", "userId"]),
+  
+  // Question cards for prompts
+  questionCards: defineTable({
+    text: v.string(),
+    category: v.optional(v.string()),
+    difficulty: v.optional(v.float64()),
+    isActive: v.boolean(),
+  })
+    .index("by_active", ["isActive"])
+    .index("by_category", ["category", "isActive"]),
+  
+  // Game rounds
+  rounds: defineTable({
+    roomId: v.id("rooms"),
+    roundNumber: v.float64(),
+    questionCardId: v.id("questionCards"),
+    status: v.union(
+      v.literal("prompt"),      // Players submitting prompts
+      v.literal("generating"),  // AI generating images
+      v.literal("voting"),      // Players voting
+      v.literal("results"),     // Showing results
+      v.literal("complete")     // Round finished
+    ),
+    startedAt: v.float64(),
+    endedAt: v.optional(v.float64()),
+    phaseEndTime: v.optional(v.float64()),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_room_and_number", ["roomId", "roundNumber"]),
+  
+  // Player prompts
+  prompts: defineTable({
+    roundId: v.id("rounds"),
+    playerId: v.id("players"),
+    text: v.string(),
+    submittedAt: v.float64(),
+  })
+    .index("by_round", ["roundId"])
+    .index("by_round_and_player", ["roundId", "playerId"]),
+  
+  // Generated images (placeholder for now, AI in next step)
+  generatedImages: defineTable({
+    promptId: v.id("prompts"),
+    imageUrl: v.string(),
+    storageId: v.optional(v.id("_storage")),
+    metadata: v.optional(v.object({
+      model: v.string(),
+      seed: v.optional(v.float64()),
+      revisedPrompt: v.optional(v.string()),
+    })),
+    generatedAt: v.float64(),
+    error: v.optional(v.string()),
+  })
+    .index("by_prompt", ["promptId"]),
+  
+  // Votes
+  votes: defineTable({
+    roundId: v.id("rounds"),
+    voterId: v.id("players"),
+    imageId: v.id("generatedImages"),
+    submittedAt: v.float64(),
+  })
+    .index("by_round", ["roundId"])
+    .index("by_voter", ["voterId"])
+    .index("by_image", ["imageId"])
+    .index("by_round_and_voter", ["roundId", "voterId"]),
 });
