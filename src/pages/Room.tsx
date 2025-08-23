@@ -1,73 +1,54 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import Header from "@/components/layout/Header";
 import { Button } from "@/components/ui/8bit/button";
-import { Card } from "@/components/ui/8bit/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/8bit/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Share2, Crown, Loader2, Users } from "lucide-react";
+import { Copy, Share2, Crown, Loader2, Users, Play, Settings, UserX, LogOut, Clock } from "lucide-react";
 import { toast } from "sonner";
 import RoomSettings from "@/components/room/RoomSettings";
+import RoomSettingsDialog from "@/components/room/RoomSettingsDialog";
 import UsernameDialog from "@/components/auth/UsernameDialog";
 import { useAuth } from "@/hooks/use-auth";
+import { useRoom } from "@/hooks/use-room";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-
-// Types
-interface Player {
-  id: string;
-  name: string;
-  isHost: boolean;
-  isConnected: boolean;
-}
+import { Id } from "../../convex/_generated/dataModel";
+import { motion, AnimatePresence } from "framer-motion";
 
 const Room = () => {
-  const { code: codeParam } = useParams<{ code: string }>();
+  // Get roomId from URL params
+  const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const code = (codeParam || "").toUpperCase();
 
-  // User (guest or signed-in)
+  // User authentication
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const updateUsername = useMutation(api.users.updateUsername);
   
-  // Only show username dialog if:
-  // 1. Not loading user data
-  // 2. User is authenticated (not null)
-  // 3. User exists but doesn't have a username
+  // Use the room hook for real data
+  const {
+    roomState,
+    isHost,
+    canStartGame,
+    handleLeaveRoom,
+    handleKickPlayer,
+    handleUpdateSettings,
+    isLoading: roomLoading,
+  } = useRoom(roomId);
+
+  // State for UI
+  const [showSettings, setShowSettings] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  // Only show username dialog if user is authenticated but doesn't have username
   const showUsernameDialog = !userLoading && isAuthenticated && user && !user.username;
-
-  // Mock Room + Current User
-  const mockRoom = useMemo(
-    () => ({
-      code,
-      hostId: "123",
-      settings: { maxPlayers: 8, rounds: 10, timer: 30 },
-      state: "waiting" as const,
-    }),
-    [code]
-  );
-  const currentUser = useMemo(() => ({ id: "123", name: "Player 1" }), []);
-  const isHost = currentUser.id === mockRoom.hostId;
-
-  // Loading state
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1000);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Players state (mock)
-  const initialPlayers: Player[] = [
-    { id: "123", name: "Player 1", isHost: true, isConnected: true },
-    { id: "456", name: "Player 2", isHost: false, isConnected: true },
-    { id: "789", name: "Player 3", isHost: false, isConnected: true },
-  ];
-  const [players, setPlayers] = useState<Player[]>(initialPlayers);
 
   // Page metadata
   useEffect(() => {
+    const code = roomState?.room?.code || 'Unknown';
     document.title = `Room ${code} — AI Image Party`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) {
@@ -76,64 +57,40 @@ const Room = () => {
         `Room ${code} lobby. Invite friends and start the AI Image Party game.`
       );
     }
-  }, [code]);
-
-  // Simulate players joining (every 5s) and connection status toggles (every 8s)
-  useEffect(() => {
-    if (loading) return;
-    const joinInterval = setInterval(() => {
-      setPlayers((prev) => {
-        const cap = Math.min(5, mockRoom.settings.maxPlayers);
-        if (prev.length >= cap) return prev;
-        const nextNum = prev.length + 1;
-        const newPlayer: Player = {
-          id: Date.now().toString(),
-          name: `Player ${nextNum}`,
-          isHost: false,
-          isConnected: true,
-        };
-        return [...prev, newPlayer];
-      });
-    }, 5000);
-
-    const statusInterval = setInterval(() => {
-      setPlayers((prev) => {
-        if (prev.length === 0) return prev;
-        const idx = Math.floor(Math.random() * prev.length);
-        const next = [...prev];
-        next[idx] = { ...next[idx], isConnected: !next[idx].isConnected };
-        return next;
-      });
-    }, 8000);
-
-    return () => {
-      clearInterval(joinInterval);
-      clearInterval(statusInterval);
-    };
-  }, [loading, mockRoom.settings.maxPlayers]);
-
-  const isFull = players.length >= mockRoom.settings.maxPlayers;
-  const validCodes = ["ABCDEF"]; // only this code exists in mock mode
-  const notFound = !loading && code && !validCodes.includes(code);
+  }, [roomState?.room?.code]);
 
   // Actions
   const handleCopyCode = async () => {
-    await navigator.clipboard.writeText(code);
-    toast.success("Room code copied!");
+    if (roomState?.room?.code) {
+      await navigator.clipboard.writeText(roomState.room.code);
+      setCopied(true);
+      toast.success("Room code copied!");
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
+  
   const handleShareLink = async () => {
-    const url = `${window.location.origin}/room/${code}`;
-    await navigator.clipboard.writeText(url);
-    toast.success("Room link copied!");
+    if (roomState?.room?._id) {
+      const url = `${window.location.origin}/room/${roomState.room._id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Room link copied!");
+    }
   };
-  const handleStartGame = () => {
-    if (players.length < 3) {
-      toast.error("Need at least 3 players to start");
+
+  const handleStartGame = async () => {
+    if (!canStartGame || !roomId) {
+      toast.error("Cannot start game yet");
       return;
     }
-    window.location.href = "/play/room123"; // mock navigation
+    
+    try {
+      // For now, navigate to game page - actual start game mutation will be added later
+      navigate(`/play/${roomId}`);
+    } catch (error) {
+      console.error("Failed to start game:", error);
+      toast.error("Failed to start game");
+    }
   };
-  const handleLeave = () => navigate("/");
 
   const handleUsernameSaved = async (name: string) => {
     const trimmed = name.trim();
@@ -142,25 +99,20 @@ const Room = () => {
     try {
       await updateUsername({ username: trimmed });
       // The user query will automatically refresh after the mutation
-      // Update local player list to reflect the new username immediately
-      setPlayers((prev) => prev.map((p) => (p.id === currentUser.id ? { ...p, name: trimmed } : p)));
-      
-      // No need to manually close dialog - it will close automatically when showUsernameDialog becomes false
     } catch (error) {
       console.error("Failed to update username:", error);
-      // The dialog will show the error
     }
   };
 
   const handleUsernameDialogClose = () => {
     // If user tries to close without setting username, redirect to dashboard
     if (user && !user.username) {
-      navigate("/");
+      navigate("/app/dashboard");
     }
   };
 
   // Show loading state while authentication is being checked
-  if (userLoading) {
+  if (userLoading || roomLoading) {
     return (
       <main className="container mx-auto min-h-screen px-4 py-16">
         <Header />
@@ -171,195 +123,309 @@ const Room = () => {
     );
   }
 
-  if (notFound) {
+  // Show room not found if no room state
+  if (!roomState) {
     return (
       <main className="container mx-auto min-h-screen px-4 py-16">
         <Helmet>
           <title>Room not found — AI Image Party</title>
           <meta name="description" content="The room you requested was not found." />
-          <link rel="canonical" href={`${window.location.origin}/room/${code}`} />
         </Helmet>
         <Header />
         <div className="pt-16">
-          <h1 className="font-display text-2xl">Room not found</h1>
-          <p className="mt-2 text-muted-foreground">Please check the code or create a new room.</p>
-          <div className="mt-6">
-            <Button asChild variant="outline">
-              <Link to="/">← Go to Homepage</Link>
+          <Card className="max-w-md mx-auto p-6">
+            <h1 className="font-display text-2xl mb-4">Room not found</h1>
+            <p className="text-muted-foreground mb-6">This room doesn't exist or has been deleted.</p>
+            <Button 
+              onClick={() => navigate("/app/dashboard")} 
+              variant="outline" 
+              className="w-full"
+            >
+              ← Back to Dashboard
             </Button>
-          </div>
+          </Card>
         </div>
       </main>
     );
   }
 
+  const { room, players } = roomState;
+  const connectedPlayers = players.filter(p => p.status === "connected");
+  const isFull = connectedPlayers.length >= room.settings.maxPlayers;
+
   return (
     <>
       <Helmet>
-        <title>Room {code} — AI Image Party</title>
+        <title>Room {room.code} — AI Image Party</title>
         <meta
           name="description"
-          content={`Room ${code} lobby. Invite friends and get ready to play AI Image Party.`}
+          content={`Room ${room.code} lobby. Invite friends and get ready to play AI Image Party.`}
         />
-        <link rel="canonical" href={`${window.location.origin}/room/${code}`} />
+        <link rel="canonical" href={`${window.location.origin}/room/${room._id}`} />
       </Helmet>
       <Header />
       <main className="container mx-auto min-h-screen px-4 pt-16 pb-28">
-        <h1 className="sr-only">Room Lobby {code}</h1>
+        <h1 className="sr-only">Room Lobby {room.code}</h1>
 
-        {/* Header Section */}
-        <section className="flex flex-col gap-4 border-b border-border pb-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Room Code</p>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="font-display text-3xl tracking-[0.2em] md:text-4xl">{code}</span>
-              <Button variant="outline" size="sm" onClick={handleCopyCode} aria-label="Copy Code">
-                <Copy size={16} /> Copy
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleShareLink} aria-label="Share Link">
-                <Share2 size={16} /> Share
-              </Button>
+        {/* Room Header Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle className="text-2xl">{room.name}</CardTitle>
+                <div className="flex items-center gap-2 mt-2">
+                  <Badge 
+                    variant="outline" 
+                    className="text-lg px-4 py-2 font-mono cursor-pointer"
+                    onClick={handleCopyCode}
+                  >
+                    {room.code}
+                  </Badge>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={handleCopyCode}
+                    aria-label="Copy Code"
+                  >
+                    <Copy className={`h-4 w-4 ${copied ? 'scale-125' : ''}`} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={handleShareLink}
+                    aria-label="Share Link"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                {isHost && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowSettings(true)}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                )}
+                <Button
+                  variant="destructive"
+                  onClick={handleLeaveRoom}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Leave
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="h-4 w-4" />
-            <span>
-              {players.length}/{mockRoom.settings.maxPlayers} players
-            </span>
-          </div>
-        </section>
+          </CardHeader>
+        </Card>
 
         {isFull && (
-          <div className="mt-4 rounded-none border-2 border-foreground bg-background p-3 text-sm" role="status">
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 rounded-lg border-2 border-foreground bg-background p-3 text-sm" 
+            role="status"
+          >
             Room is full
-          </div>
+          </motion.div>
         )}
 
+        {/* Room Statistics */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <Card className="p-4 text-center">
+            <p className="text-sm text-muted-foreground">Status</p>
+            <Badge className="mt-1" variant={room.status === 'waiting' ? 'default' : 'secondary'}>
+              {room.status}
+            </Badge>
+          </Card>
+          <Card className="p-4 text-center">
+            <p className="text-sm text-muted-foreground">Players</p>
+            <p className="text-2xl font-bold mt-1">
+              {connectedPlayers.length}/{room.settings.maxPlayers}
+            </p>
+          </Card>
+          <Card className="p-4 text-center">
+            <p className="text-sm text-muted-foreground">Rounds</p>
+            <p className="text-2xl font-bold mt-1">
+              {room.settings.roundsPerGame}
+            </p>
+          </Card>
+        </div>
+
         {/* Players Section */}
-        <section className="mt-6">
-          <h2 className="font-display text-lg">Players</h2>
-          {loading ? (
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="flex-1">
-                      <Skeleton className="h-4 w-3/5" />
-                      <div className="mt-2 flex gap-2">
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-4 w-10" />
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {players.map((p) => (
-                  <Card key={p.id} className="p-4">
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Players ({connectedPlayers.length}/{room.settings.maxPlayers})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <AnimatePresence>
+                {players.map((player) => (
+                  <motion.div
+                    key={player._id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <Avatar className="h-10 w-10">
                           <AvatarFallback className="bg-primary/10 text-foreground">
-                            {p.name.charAt(0).toUpperCase()}
+                            {player.displayName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <span
                           className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-background ${
-                            p.isConnected ? "bg-primary" : "bg-muted-foreground"
+                            player.status === "connected" ? "bg-green-500" : "bg-muted-foreground"
                           }`}
-                          aria-label={p.isConnected ? "connected" : "disconnected"}
+                          aria-label={player.status === "connected" ? "connected" : "disconnected"}
                         />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <p className="truncate">{p.name}</p>
-                          {p.isHost && (
+                          <p className="truncate font-medium">{player.displayName}</p>
+                          {player.isHost && (
                             <Badge variant="secondary" className="inline-flex items-center gap-1">
-                              <Crown className="h-3.5 w-3.5" /> Host
+                              <Crown className="h-3 w-3" /> Host
                             </Badge>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {p.isConnected ? "Online" : "Reconnecting..."}
+                          {player.status === "connected" ? "Online" : 
+                           player.status === "disconnected" ? "Reconnecting..." : "Kicked"}
                         </p>
                       </div>
                     </div>
-                  </Card>
+                    
+                    {isHost && !player.isHost && player.status === "connected" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleKickPlayer(player._id)}
+                        aria-label={`Kick ${player.displayName}`}
+                      >
+                        <UserX className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </motion.div>
                 ))}
-              </div>
-              {players.length < 3 && (
-                <p className="mt-3 text-sm text-muted-foreground">Waiting for players...</p>
-              )}
-            </>
-          )}
-        </section>
+              </AnimatePresence>
+            </div>
+            {connectedPlayers.length < 2 && (
+              <p className="mt-3 text-sm text-muted-foreground text-center">
+                Waiting for more players to join...
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Settings Section */}
-        <section className="mt-8">
-          <h2 className="sr-only">Room Settings</h2>
-          <RoomSettings className="mt-3" />
-        </section>
+        {/* Game Settings Display */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Game Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <span>Time per round: {room.settings.timePerRound}s</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <span>Max players: {room.settings.maxPlayers}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Rounds: {room.settings.roundsPerGame}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Private: {room.settings.isPrivate ? "Yes" : "No"}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Actions Section (desktop) */}
         <section className="mt-8 hidden md:block">
-          {isHost ? (
-            <div>
+          {isHost && room.status === "waiting" ? (
+            <div className="space-y-4">
               <Button
                 size="xl"
                 onClick={handleStartGame}
-                disabled={players.length < 3}
+                disabled={!canStartGame}
                 variant="neon"
                 aria-label="Start Game"
+                className="w-full"
               >
-                Start Game
+                <Play className="mr-2 h-5 w-5" />
+                {canStartGame ? "Start Game" : "Need at least 2 players to start"}
               </Button>
-              {players.length < 3 && (
-                <p className="mt-2 text-sm text-muted-foreground">Need at least 3 players to start</p>
-              )}
             </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          ) : !isHost && room.status === "waiting" ? (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-4">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Waiting for host to start the game</span>
             </div>
+          ) : (
+            <div className="text-center text-muted-foreground">
+              Game is {room.status}
+            </div>
           )}
-          <div className="mt-6">
-            <Button variant="outline" asChild aria-label="Leave Room">
-              <Link to="/">Leave Room</Link>
-            </Button>
-          </div>
         </section>
       </main>
 
       {/* Mobile fixed action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur md:hidden">
         <div className="container mx-auto flex items-center gap-3 px-4 py-3">
-          {isHost ? (
+          {isHost && room.status === "waiting" ? (
             <Button
               className="flex-1"
               size="lg"
               onClick={handleStartGame}
-              disabled={players.length < 3}
+              disabled={!canStartGame}
               variant="neon"
               aria-label="Start Game"
             >
+              <Play className="mr-2 h-4 w-4" />
               Start Game
             </Button>
-          ) : (
+          ) : !isHost && room.status === "waiting" ? (
             <div className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Waiting for host...</span>
             </div>
+          ) : (
+            <div className="flex-1 text-center text-muted-foreground">
+              Game is {room.status}
+            </div>
           )}
-          <Button variant="outline" size="lg" onClick={handleLeave} aria-label="Leave Room">
-            Leave Room
+          <Button variant="outline" size="lg" onClick={handleLeaveRoom} aria-label="Leave Room">
+            <LogOut className="h-4 w-4 mr-2" />
+            Leave
           </Button>
         </div>
       </div>
+
+      {/* Settings Dialog */}
+      {showSettings && isHost && (
+        <RoomSettingsDialog
+          roomId={room._id}
+          currentSettings={{
+            maxPlayers: room.settings.maxPlayers,
+            roundsPerGame: room.settings.roundsPerGame,
+            timePerRound: room.settings.timePerRound,
+            isPrivate: room.settings.isPrivate,
+          }}
+          onClose={() => setShowSettings(false)}
+          onSave={handleUpdateSettings}
+        />
+      )}
 
       {/* Username Dialog - force open for guests without a name */}
       <UsernameDialog 
