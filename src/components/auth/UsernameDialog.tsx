@@ -58,12 +58,18 @@ export default function UsernameDialog({ open, onSubmit, onClose }: Props) {
         // Landing page flow - use the provided callback
         onSubmit(username.trim());
       } else {
-        // Protected route flow - use Convex mutation
+        // Protected route flow - use enhanced Convex mutation with better error handling
         await updateUsername({ username: username.trim() });
         // Dialog will close automatically when user data updates
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update username");
+      const errorMessage = err instanceof Error ? err.message : "Failed to update username";
+      // Enhanced error handling for authentication context issues
+      if (errorMessage.includes("Authentication required")) {
+        setError(`${errorMessage} Please try again or refresh the page.`);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

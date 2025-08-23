@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Loader2 } from "lucide-react";
-import UsernameDialog from "./UsernameDialog";
+import { OnboardingWizard } from "./OnboardingWizard";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -15,6 +15,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
   const { signIn } = useAuthActions();
   const location = useLocation();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authStable, setAuthStable] = useState(false);
 
   // Auto-sign in anonymous users when they try to access protected routes
   useEffect(() => {
@@ -31,15 +32,22 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
     }
   }, [isLoading, isAuthenticated, isSigningIn, signIn]);
 
-  // Reset signing in state once we're authenticated and user is loaded
+  // Add authentication stabilization to prevent race conditions
   useEffect(() => {
-    if (isAuthenticated && user !== undefined && isSigningIn) {
-      setIsSigningIn(false);
+    if (isAuthenticated && user !== undefined) {
+      // Add small delay to ensure authentication context is fully established
+      const timer = setTimeout(() => {
+        setAuthStable(true);
+        setIsSigningIn(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setAuthStable(false);
     }
-  }, [isAuthenticated, user, isSigningIn]);
+  }, [isAuthenticated, user]);
 
-  // Show loading state while checking auth or signing in
-  if (isLoading || isSigningIn) {
+  // Show loading state while checking auth, signing in, or stabilizing
+  if (isLoading || isSigningIn || (isAuthenticated && !authStable)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -52,9 +60,9 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Show username dialog if user doesn't have a username
-  if (requireOnboarding && user && !user.username) {
-    return <UsernameDialog open={true} />;
+  // Show onboarding wizard if user needs to complete onboarding
+  if (requireOnboarding && user && (!user.username || !user.onboardingCompleted)) {
+    return <OnboardingWizard open={true} />;
   }
 
   return <>{children}</>;
