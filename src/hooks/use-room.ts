@@ -97,11 +97,11 @@ export function useJoinRoom() {
         return { success: true, roomId: result.roomId };
       }
       return { success: false, error: "Room not found" };
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to join room:", error);
       return { 
         success: false, 
-        error: error.message || "Failed to join room" 
+        error: error instanceof Error ? error.message : "Failed to join room" 
       };
     }
   }, [joinRoom, navigate]);
@@ -133,11 +133,11 @@ export function useCreateRoom() {
         return { success: true, roomId: result.roomId, code: result.code };
       }
       return { success: false, error: "Failed to create room" };
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to create room:", error);
       return { 
         success: false, 
-        error: error.message || "Failed to create room" 
+        error: error instanceof Error ? error.message : "Failed to create room" 
       };
     }
   }, [createRoom, navigate]);
