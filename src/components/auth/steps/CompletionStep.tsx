@@ -26,7 +26,7 @@ export function CompletionStep({ onNext, onBack, onError, data }: OnboardingStep
       await completeOnboarding({
         username,
         displayName: displayName !== username ? displayName : undefined,
-        avatarId: data.avatar?.avatarId, // This would be a storage ID in real implementation
+        avatarId: data.avatar?.avatarId, // String-based avatar ID (matches schema)
       });
 
       setCompleted(true);

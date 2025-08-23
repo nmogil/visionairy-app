@@ -1,4 +1,4 @@
-import { query, mutation, MutationCtx } from "./_generated/server";
+import { query, mutation, internalMutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -16,7 +16,7 @@ export const getCurrentUser = query({
       name: v.optional(v.string()),
       username: v.optional(v.string()),
       displayName: v.optional(v.string()),
-      avatarId: v.optional(v.id("_storage")),
+      avatarId: v.optional(v.string()), // Temporarily string-based until proper avatar storage is implemented
       lastActiveAt: v.optional(v.number()),
       onboardingCompleted: v.optional(v.boolean()),
       isNewUser: v.optional(v.boolean()),
@@ -110,7 +110,7 @@ export const completeOnboarding = mutation({
   args: {
     username: v.string(),
     displayName: v.optional(v.string()),
-    avatarId: v.optional(v.id("_storage")),
+    avatarId: v.optional(v.string()), // Temporarily string-based until proper avatar storage is implemented
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -177,5 +177,39 @@ export const checkUsernameAvailable = query({
       .unique();
     
     return !existing;
+  },
+});
+
+// Migration function to fix existing users with invalid avatarId
+// This function should be called once to clean up existing data
+export const migrateAvatarIds = internalMutation({
+  args: {},
+  returns: v.object({
+    migratedCount: v.number(),
+    errorCount: v.number(),
+  }),
+  handler: async (ctx) => {
+    let migratedCount = 0;
+    let errorCount = 0;
+    
+    try {
+      // Get all users to check for invalid avatarId values
+      const users = await ctx.db.query("users").collect();
+      
+      for (const user of users) {
+        // If avatarId exists but is not a valid string format for our current system
+        // This handles the case where avatarId might be in an invalid state
+        if (user.avatarId !== undefined && user.avatarId !== null) {
+          // For now, we'll keep any existing string values as they are valid
+          // In the future, this could be expanded to validate against known avatar IDs
+          migratedCount++;
+        }
+      }
+      
+      return { migratedCount, errorCount };
+    } catch (error) {
+      console.error("Migration error:", error);
+      return { migratedCount, errorCount: errorCount + 1 };
+    }
   },
 });

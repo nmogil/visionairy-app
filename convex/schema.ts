@@ -17,7 +17,7 @@ export default defineSchema({
     // Custom fields for our app
     username: v.optional(v.string()),
     displayName: v.optional(v.string()),
-    avatarId: v.optional(v.id("_storage")),
+    avatarId: v.optional(v.string()), // Temporarily string-based until proper avatar storage is implemented
     lastActiveAt: v.optional(v.float64()),
     onboardingCompleted: v.optional(v.boolean()),
     isNewUser: v.optional(v.boolean()), // Track if user just signed up
