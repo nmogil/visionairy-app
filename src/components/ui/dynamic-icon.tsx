@@ -58,10 +58,10 @@ export const DynamicIcon = forwardRef<SVGSVGElement, DynamicIconProps>(
     if (!IconComponent) {
       return (
         <div 
-          ref={ref as any}
+          ref={ref as React.Ref<HTMLDivElement>}
           className={cn("inline-block", className)} 
           style={{ width: props.size || 16, height: props.size || 16 }}
-          {...(props as any)}
+          {...(props as React.HTMLAttributes<HTMLDivElement>)}
         />
       );
     }

@@ -2,7 +2,7 @@ import React, { lazy, ComponentType, ReactElement } from "react";
 import { Loader2 } from "lucide-react";
 
 // Enhanced lazy loading with better error handling and loading states
-export function createLazyComponent<T extends ComponentType<any>>(
+export function createLazyComponent<T extends ComponentType<unknown>>(
   importFunction: () => Promise<{ default: T }>,
   fallback: ReactElement = <div className="flex items-center justify-center p-4">
     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -45,7 +45,7 @@ export async function loadIcon(iconName: string) {
 }
 
 // Utility to create lazy loaded routes
-export function createLazyRoute<T extends ComponentType<any>>(
+export function createLazyRoute<T extends ComponentType<unknown>>(
   importFunction: () => Promise<{ default: T }>,
   routeName: string = "page"
 ) {
