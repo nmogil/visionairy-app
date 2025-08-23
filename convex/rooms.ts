@@ -17,9 +17,9 @@ export const createRoom = mutation({
   args: {
     name: v.string(),
     settings: v.optional(v.object({
-      maxPlayers: v.optional(v.number()),
-      roundsPerGame: v.optional(v.number()),
-      timePerRound: v.optional(v.number()),
+      maxPlayers: v.optional(v.float64()),
+      roundsPerGame: v.optional(v.float64()),
+      timePerRound: v.optional(v.float64()),
       isPrivate: v.optional(v.boolean()),
     })),
   },
