@@ -247,7 +247,7 @@ export const transitionPhase = internalMutation({
         );
         break;
         
-      case "results":
+      case "results": {
         // Mark round as complete
         await ctx.db.patch(args.roundId, {
           status: "complete",
@@ -268,6 +268,7 @@ export const transitionPhase = internalMutation({
           });
         }
         break;
+      }
     }
     
     return null;
@@ -645,7 +646,15 @@ export const getGameState = query({
     );
     
     // Get images with vote counts for current round
-    let images: any[] = [];
+    let images: Array<{
+      _id: Id<"generatedImages">;
+      promptId: Id<"prompts">;
+      imageUrl: string;
+      promptText: string;
+      voteCount: number;
+      isWinner: boolean;
+      isOwn: boolean;
+    }> = [];
     if (round && (round.status === "voting" || round.status === "results")) {
       const prompts = await ctx.db
         .query("prompts")
