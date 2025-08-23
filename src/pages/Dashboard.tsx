@@ -296,7 +296,7 @@ const Dashboard = () => {
               maxLength={6}
               onChange={(e) =>
                 setRoomCode(
-                  e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6)
+                  e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6)
                 )
               }
               className="h-12 text-center tracking-[0.1em] uppercase"
