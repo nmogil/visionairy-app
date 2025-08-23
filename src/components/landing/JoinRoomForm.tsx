@@ -1,104 +1,215 @@
 import { useCallback, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/8bit/button";
-import { LogIn } from "lucide-react";
+import { LogIn, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { useToast } from "@/hooks/use-toast";
 import UsernameDialog from "@/components/auth/UsernameDialog";
+
+// Constants
+const ROOM_CODE_LENGTH = 6;
+const ROOM_CODE_REGEX = /^[A-Z0-9]{6}$/;
+const DEFAULT_ERROR_MESSAGE = "Unable to join room. Please try again.";
 
 export const JoinRoomForm = () => {
   const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const { user, isAuthenticated, isLoading } = useAuth();
   const { signIn } = useAuthActions();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const updateUsername = useMutation(api.users.updateUsername);
+  const joinRoom = useMutation(api.rooms.joinRoom);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  const navigateToRoom = useCallback((roomCode: string) => {
-    console.log("Joining room:", roomCode);
-    navigate(`/room/${roomCode}`);
-  }, [navigate]);
+  const navigateToRoom = useCallback((roomId: string) => {
+    navigate(`/room/${roomId}`);
+    toast({
+      title: "Joined room successfully!",
+      description: "Welcome to the game room.",
+    });
+  }, [navigate, toast]);
+
+  // Helper function to provide user-friendly error messages
+  const getErrorMessage = useCallback((backendError: string): string => {
+    if (backendError.includes("Room not found")) {
+      return "Room not found. Please check the code and try again.";
+    }
+    if (backendError.includes("Room is full")) {
+      return "This room is full. Try joining a different room.";
+    }
+    if (backendError.includes("Game already started")) {
+      return "This game has already started and doesn't allow late joining.";
+    }
+    if (backendError.includes("Game has ended")) {
+      return "This game has already ended. Please join a different room.";
+    }
+    if (backendError.includes("kicked from this room")) {
+      return "You have been removed from this room and cannot rejoin.";
+    }
+    if (backendError.includes("Not authenticated")) {
+      return "Authentication required. Please try again.";
+    }
+    if (backendError.includes("complete onboarding")) {
+      return "Please complete your profile setup first.";
+    }
+    // Generic fallback
+    return DEFAULT_ERROR_MESSAGE;
+  }, []);
 
   const handleJoin = useCallback(async () => {
-    if (!/^[A-Z]{6}$/.test(code)) {
-      alert("Please enter a valid 6-letter code");
+    // Reset error state
+    setError(null);
+    
+    // Validate room code format
+    if (!ROOM_CODE_REGEX.test(code)) {
+      setError(`Please enter a valid ${ROOM_CODE_LENGTH}-character room code`);
       return;
     }
     
-    // If not authenticated, sign in anonymously first
-    if (!isAuthenticated && !isSigningIn) {
-      setIsSigningIn(true);
-      try {
-        await signIn("anonymous");
-        console.log("Anonymous sign-in successful");
-      } catch (error) {
-        console.error("Anonymous sign-in failed:", error);
+    setIsJoining(true);
+    
+    try {
+      // If not authenticated, sign in anonymously first
+      if (!isAuthenticated && !isSigningIn) {
+        setIsSigningIn(true);
+        try {
+          await signIn("anonymous");
+        } catch (error) {
+          console.error("Anonymous sign-in failed:", error);
+          setError("Failed to authenticate. Please try again.");
+          setIsJoining(false);
+          setIsSigningIn(false);
+          return;
+        }
         setIsSigningIn(false);
+      }
+      
+      // Check if user has a username, if not show dialog
+      if (isAuthenticated && user && !user.username) {
+        setShowNameModal(true);
+        setIsJoining(false);
         return;
       }
-      setIsSigningIn(false);
+      
+      // Try to join the room using the backend
+      if (isAuthenticated && user?.username) {
+        try {
+          const result = await joinRoom({ code: code.toUpperCase() });
+          if (result.success && result.roomId) {
+            navigateToRoom(result.roomId);
+          }
+        } catch (joinError: unknown) {
+          // Handle specific error cases from backend
+          const errorMessage = joinError instanceof Error 
+            ? joinError.message 
+            : DEFAULT_ERROR_MESSAGE;
+          setError(getErrorMessage(errorMessage));
+        }
+      }
+    } finally {
+      setIsJoining(false);
     }
-    
-    // Check if user has a username, if not show dialog
-    if (isAuthenticated && user && !user.username) {
-      setShowNameModal(true);
-      return;
-    }
-    
-    // If authenticated and has username, navigate to room
-    if (isAuthenticated && user?.username) {
-      navigateToRoom(code);
-    }
-  }, [code, isAuthenticated, isSigningIn, signIn, user, navigateToRoom]);
+  }, [code, isAuthenticated, isSigningIn, signIn, user, navigateToRoom, joinRoom, getErrorMessage]);
 
   const handleNameSubmit = useCallback(
     async (name: string) => {
       try {
         await updateUsername({ username: name });
         setShowNameModal(false);
-        navigateToRoom(code);
+        
+        // Now try to join the room with the updated username
+        try {
+          const result = await joinRoom({ code: code.toUpperCase() });
+          if (result.success && result.roomId) {
+            navigateToRoom(result.roomId);
+          }
+        } catch (joinError: unknown) {
+          const errorMessage = joinError instanceof Error 
+            ? joinError.message 
+            : DEFAULT_ERROR_MESSAGE;
+          setError(getErrorMessage(errorMessage));
+        }
       } catch (error) {
         console.error("Failed to update username:", error);
         // Dialog will show the error and remain open
       }
     },
-    [code, updateUsername, navigateToRoom]
+    [code, updateUsername, navigateToRoom, joinRoom, getErrorMessage]
   );
+
+  const isFormDisabled = isLoading || isSigningIn || isJoining;
+  const shouldShowError = error && code.length === ROOM_CODE_LENGTH;
 
   return (
     <>
       <form
-        className="flex w-full items-center gap-2"
+        className="flex w-full flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           handleJoin();
         }}
       >
-        <Input
-          aria-label="Room code"
-          placeholder="ROOM CODE"
-          value={code}
-          maxLength={6}
-          onChange={(e) => {
-            const next = e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 6);
-            setCode(next);
-          }}
-          className="flex-1 min-w-0 px-2 sm:px-3 h-12 text-center tracking-[0.1em] uppercase md:h-12 [&::placeholder]:whitespace-nowrap [&::placeholder]:tracking-tighter [&::placeholder]:normal-case [&::placeholder]:text-[9px] sm:[&::placeholder]:text-xs md:[&::placeholder]:text-sm"
-        />
-        <Button 
-          type="submit" 
-          variant="outline" 
-          size="xl" 
-          aria-label="Join with code"
-          disabled={isLoading || isSigningIn}
-        >
-          <LogIn />
-          {isLoading || isSigningIn ? "Loading..." : "Join"}
-        </Button>
+        <div className="flex w-full items-center gap-2">
+          <Input
+            aria-label="Room code"
+            aria-describedby={shouldShowError ? "join-error" : undefined}
+            aria-invalid={shouldShowError}
+            placeholder="ROOM CODE"
+            value={code}
+            maxLength={ROOM_CODE_LENGTH}
+            onChange={(e) => {
+              const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, ROOM_CODE_LENGTH);
+              setCode(next);
+              if (error) setError(null); // Clear error when user starts typing
+            }}
+            className={`flex-1 min-w-0 px-2 sm:px-3 h-12 text-center tracking-[0.1em] uppercase md:h-12 [&::placeholder]:whitespace-nowrap [&::placeholder]:tracking-tighter [&::placeholder]:normal-case [&::placeholder]:text-[9px] sm:[&::placeholder]:text-xs md:[&::placeholder]:text-sm ${
+              shouldShowError ? "border-destructive focus:border-destructive" : ""
+            }`}
+            disabled={isFormDisabled}
+          />
+          <Button 
+            type="submit" 
+            variant="outline" 
+            size="xl" 
+            aria-label="Join room with code"
+            disabled={isFormDisabled || code.length !== ROOM_CODE_LENGTH}
+          >
+            {isJoining ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Joining...
+              </>
+            ) : (
+              <>
+                <LogIn />
+                {isLoading || isSigningIn ? "Loading..." : "Join"}
+              </>
+            )}
+          </Button>
+        </div>
+        
+        {/* Error message display */}
+        {shouldShowError && (
+          <div
+            id="join-error"
+            role="alert"
+            className="text-sm text-destructive px-2 py-1 rounded bg-destructive/10 border border-destructive/20"
+          >
+            {error}
+          </div>
+        )}
+        
+        {/* Help text */}
+        <div className="text-xs text-muted-foreground text-center px-2">
+          Enter a {ROOM_CODE_LENGTH}-character room code to join an existing game
+        </div>
       </form>
       <UsernameDialog open={showNameModal} onSubmit={handleNameSubmit} />
     </>
