@@ -190,7 +190,7 @@ export const migrateAvatarIds = internalMutation({
   }),
   handler: async (ctx) => {
     let migratedCount = 0;
-    let errorCount = 0;
+    const errorCount = 0;
     
     try {
       // Get all users to check for invalid avatarId values
