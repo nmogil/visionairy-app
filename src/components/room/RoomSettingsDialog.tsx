@@ -78,12 +78,12 @@ export function RoomSettingsDialog({
           
           {/* Rounds */}
           <div className="space-y-3">
-            <Label htmlFor="rounds">Total Rounds (1-20)</Label>
+            <Label htmlFor="rounds">Total Rounds (1-10)</Label>
             <Slider
               id="rounds"
               value={[settings.roundsPerGame]}
               min={1}
-              max={20}
+              max={10}
               step={1}
               onValueChange={(value) => setSettings({
                 ...settings,
