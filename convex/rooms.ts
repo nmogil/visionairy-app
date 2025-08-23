@@ -1,5 +1,6 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { GAME_CONFIG, ROOM_CODE_LENGTH, ROOM_CODE_CHARS } from "./lib/constants";
 
 // Helper function to generate unique room codes
@@ -27,14 +28,11 @@ export const createRoom = mutation({
     code: v.string(),
   }),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
     
     // Get current user
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .unique();
+    const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
     
     if (!user.onboardingCompleted) {

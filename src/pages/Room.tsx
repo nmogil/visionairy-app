@@ -29,9 +29,14 @@ const Room = () => {
   const code = (codeParam || "").toUpperCase();
 
   // User (guest or signed-in)
-  const { user } = useAuth();
+  const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const updateUsername = useMutation(api.users.updateUsername);
-  const showUsernameDialog = !user?.username;
+  
+  // Only show username dialog if:
+  // 1. Not loading user data
+  // 2. User is authenticated (not null)
+  // 3. User exists but doesn't have a username
+  const showUsernameDialog = !userLoading && isAuthenticated && user && !user.username;
 
   // Mock Room + Current User
   const mockRoom = useMemo(
@@ -136,13 +141,35 @@ const Room = () => {
     
     try {
       await updateUsername({ username: trimmed });
-      // Update local player list
+      // The user query will automatically refresh after the mutation
+      // Update local player list to reflect the new username immediately
       setPlayers((prev) => prev.map((p) => (p.id === currentUser.id ? { ...p, name: trimmed } : p)));
+      
+      // No need to manually close dialog - it will close automatically when showUsernameDialog becomes false
     } catch (error) {
       console.error("Failed to update username:", error);
       // The dialog will show the error
     }
   };
+
+  const handleUsernameDialogClose = () => {
+    // If user tries to close without setting username, redirect to dashboard
+    if (user && !user.username) {
+      navigate("/");
+    }
+  };
+
+  // Show loading state while authentication is being checked
+  if (userLoading) {
+    return (
+      <main className="container mx-auto min-h-screen px-4 py-16">
+        <Header />
+        <div className="pt-16 flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </main>
+    );
+  }
 
   if (notFound) {
     return (
@@ -335,7 +362,11 @@ const Room = () => {
       </div>
 
       {/* Username Dialog - force open for guests without a name */}
-      <UsernameDialog open={!!showUsernameDialog} onSubmit={handleUsernameSaved} />
+      <UsernameDialog 
+        open={!!showUsernameDialog} 
+        onSubmit={handleUsernameSaved} 
+        onClose={handleUsernameDialogClose}
+      />
     </>
   );
 };

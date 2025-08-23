@@ -1,7 +1,24 @@
-# Step 4: AI Image Generation Integration
+# Step 4: AI Image Generation + Optimization
 
 ## Objective
-Replace placeholder images with real AI-generated images using OpenAI's DALL-E 3 API.
+Replace placeholder images with real AI-generated images using OpenAI's DALL-E 3 API with optimized image loading and display.
+
+## Image Optimization Requirements
+**Critical:** AI image generation and display can significantly impact performance. Implement progressive loading, lazy loading, and optimized image handling.
+
+### Optimization Targets
+- Progressive image loading with blur-to-clear effect
+- Lazy loading for image galleries
+- Image compression and WebP format support
+- Optimized voting interface with virtual scrolling
+- Bundle size impact: Minimize image handling libraries
+
+### Components to Optimize
+1. **Image Gallery** - Virtual scrolling for large image sets
+2. **Progressive Loading** - Blur placeholder → full resolution
+3. **Lazy Loading** - Load images only when in viewport
+4. **Image Optimization** - WebP/AVIF format support with fallbacks
+5. **Voting Interface** - Optimized for touch and mouse interactions
 
 ## Prerequisites
 - ✅ Completed Steps 0-3 (Setup, Auth, Rooms, Game Mechanics)
@@ -17,7 +34,254 @@ Replace placeholder images with real AI-generated images using OpenAI's DALL-E 3
 
 ## Implementation Steps
 
-### 1. Install OpenAI SDK
+### 1. Setup Image Optimization Utils
+
+Before integrating AI generation, create optimized image handling:
+
+#### Create Progressive Image Component
+
+Create `src/components/ui/progressive-image.tsx`:
+```typescript
+import { useState, useRef, useEffect } from "react";
+import { cn } from "@/lib/utils";
+
+interface ProgressiveImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+  blurDataUrl?: string;
+  priority?: boolean;
+  onLoad?: () => void;
+}
+
+export function ProgressiveImage({
+  src,
+  alt,
+  className,
+  blurDataUrl,
+  priority = false,
+  onLoad
+}: ProgressiveImageProps) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [inView, setInView] = useState(priority);
+
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    if (priority || !imgRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "50px" }
+    );
+
+    observer.observe(imgRef.current);
+    return () => observer.disconnect();
+  }, [priority]);
+
+  const handleLoad = () => {
+    setLoaded(true);
+    onLoad?.();
+  };
+
+  const handleError = () => {
+    setError(true);
+  };
+
+  return (
+    <div ref={imgRef} className={cn("relative overflow-hidden", className)}>
+      {/* Blur placeholder */}
+      {blurDataUrl && !loaded && (
+        <img
+          src={blurDataUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-sm transition-opacity duration-300"
+          style={{ filter: "blur(10px)" }}
+        />
+      )}
+      
+      {/* Loading skeleton */}
+      {!blurDataUrl && !loaded && !error && (
+        <div className="absolute inset-0 bg-muted animate-pulse" />
+      )}
+      
+      {/* Main image */}
+      {inView && (
+        <img
+          src={src}
+          alt={alt}
+          className={cn(
+            "w-full h-full object-cover transition-opacity duration-300",
+            loaded ? "opacity-100" : "opacity-0"
+          )}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
+      )}
+      
+      {/* Error fallback */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted">
+          <span className="text-xs text-muted-foreground">Failed to load</span>
+        </div>
+      )}
+      
+      {/* Loading indicator */}
+      {inView && !loaded && !error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+#### Create Optimized Image Gallery
+
+Create `src/components/game/ImageGallery.tsx`:
+```typescript
+import { useState, useMemo, useCallback } from "react";
+import { ProgressiveImage } from "@/components/ui/progressive-image";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DynamicIcon } from "@/components/ui/dynamic-icon";
+import { cn } from "@/lib/utils";
+
+interface GeneratedImage {
+  _id: string;
+  imageUrl: string;
+  promptText: string;
+  voteCount: number;
+  isUserImage?: boolean;
+}
+
+interface ImageGalleryProps {
+  images: GeneratedImage[];
+  onVote?: (imageId: string) => void;
+  votedImageId?: string;
+  disabled?: boolean;
+  columns?: number;
+}
+
+// Generate blur placeholder data URL
+function generateBlurPlaceholder(width = 40, height = 40) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d')!;
+  
+  // Create simple gradient blur
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, '#f3f4f6');
+  gradient.addColorStop(0.5, '#e5e7eb');
+  gradient.addColorStop(1, '#d1d5db');
+  
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  
+  return canvas.toDataURL('image/jpeg', 0.1);
+}
+
+export function ImageGallery({
+  images,
+  onVote,
+  votedImageId,
+  disabled = false,
+  columns = 2
+}: ImageGalleryProps) {
+  const [loadedImages, setLoadedImages] = useState(new Set<string>());
+  
+  const blurPlaceholder = useMemo(() => generateBlurPlaceholder(), []);
+  
+  const handleImageLoad = useCallback((imageId: string) => {
+    setLoadedImages(prev => new Set([...prev, imageId]));
+  }, []);
+  
+  const handleVote = useCallback((imageId: string) => {
+    if (!disabled && !votedImageId && onVote) {
+      onVote(imageId);
+    }
+  }, [disabled, votedImageId, onVote]);
+  
+  if (images.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No images to display</p>
+      </div>
+    );
+  }
+  
+  return (
+    <div 
+      className={cn(
+        "grid gap-4",
+        columns === 2 && "grid-cols-1 md:grid-cols-2",
+        columns === 3 && "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+        columns === 4 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+      )}
+    >
+      {images.map((image) => (
+        <Card
+          key={image._id}
+          className={cn(
+            "overflow-hidden transition-all duration-200",
+            onVote && !disabled && "cursor-pointer hover:scale-105 hover:shadow-lg",
+            votedImageId === image._id && "ring-2 ring-primary",
+            image.isUserImage && "opacity-50 cursor-not-allowed"
+          )}
+          onClick={() => !image.isUserImage && handleVote(image._id)}
+        >
+          <div className="aspect-square">
+            <ProgressiveImage
+              src={image.imageUrl}
+              alt={`Generated image: ${image.promptText}`}
+              className="w-full h-full"
+              blurDataUrl={blurPlaceholder}
+              onLoad={() => handleImageLoad(image._id)}
+            />
+          </div>
+          
+          <div className="p-3">
+            <p className="text-sm font-medium line-clamp-2 mb-2">
+              {image.promptText}
+            </p>
+            
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-xs">
+                <DynamicIcon name="Heart" className="w-3 h-3 mr-1" />
+                {image.voteCount} vote{image.voteCount !== 1 ? 's' : ''}
+              </Badge>
+              
+              {image.isUserImage && (
+                <Badge variant="secondary" className="text-xs">
+                  Your image
+                </Badge>
+              )}
+              
+              {votedImageId === image._id && (
+                <Badge className="text-xs">
+                  <DynamicIcon name="Check" className="w-3 h-3 mr-1" />
+                  Voted
+                </Badge>
+              )}
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+```
+
+### 2. Install OpenAI SDK
 
 ```bash
 # If not already installed
@@ -813,7 +1077,53 @@ mcp_convex_data --deploymentSelector dev --tableName generatedImages --order des
    - Use cached images for common prompts
    - Generate lower quality for non-critical rounds
 
+## Image Optimization Verification
+
+After implementing AI integration, verify image performance:
+
+### 1. Image Loading Performance
+```bash
+# Test image loading optimization
+1. Open DevTools → Network tab → Images filter
+2. Start a game and generate images
+3. Verify progressive loading works:
+   - Blur placeholders show immediately
+   - Images load progressively
+   - Lazy loading triggers on scroll
+4. Check image sizes are reasonable (<500KB each)
+```
+
+### 2. Bundle Impact Assessment
+```bash
+# Check bundle size impact from image components
+npm run build
+npm run build -- --analyze
+
+# Expected results:
+# - Image components in separate chunks
+# - Progressive image utilities minimal impact
+# - No large image processing libraries bundled
+```
+
+### 3. Image Performance Checklist
+- [ ] Progressive loading works (blur → full resolution)
+- [ ] Lazy loading prevents unnecessary image requests
+- [ ] Image gallery handles 8+ images smoothly
+- [ ] Voting interface responsive on mobile
+- [ ] Error states display properly
+- [ ] Loading states provide good UX
+- [ ] Bundle size impact minimal (<25KB added)
+
+### 4. Performance Metrics
+Target achievements:
+- **Image Loading:** First image visible <500ms
+- **Gallery Scroll:** Smooth at 60fps
+- **Bundle Impact:** <25KB increase from image components
+- **Memory Usage:** No memory leaks during image loading
+
 ## Success Criteria
+
+### Functional Requirements
 - [ ] Images generate within 30 seconds
 - [ ] All prompts get images (or fallbacks)
 - [ ] Error handling prevents game interruption
@@ -821,9 +1131,20 @@ mcp_convex_data --deploymentSelector dev --tableName generatedImages --order des
 - [ ] Images display correctly in voting phase
 - [ ] Metadata is properly stored
 
+### Optimization Requirements
+- [ ] Progressive image loading implemented
+- [ ] Lazy loading prevents unnecessary requests
+- [ ] Image gallery smooth with 8+ images
+- [ ] Bundle size impact under 25KB
+- [ ] First image loads under 500ms
+- [ ] No memory leaks during image operations
+
 ## Next Steps
-Once AI integration works:
-1. Test with full game (4+ players)
-2. Monitor API costs
-3. Optimize prompt quality
-4. Proceed to **05-realtime-presence-instructions.md**
+Once AI integration works AND image optimization verified:
+1. Test image loading performance in browser DevTools
+2. Verify bundle size impact is minimal
+3. Test with full game (4+ players)
+4. Monitor API costs and image loading metrics
+5. Optimize prompt quality
+6. **Document image performance improvements**
+7. Proceed to **05-realtime-presence-instructions.md**

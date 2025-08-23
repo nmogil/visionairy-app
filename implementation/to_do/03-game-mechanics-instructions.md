@@ -1,7 +1,23 @@
-# Step 3: Core Game Mechanics Implementation
+# Step 3: Core Game Mechanics + Performance Optimization
 
 ## Objective
-Implement the core game flow including rounds, phases, prompt submission, and voting mechanics.
+Implement the core game flow including rounds, phases, prompt submission, and voting mechanics with optimized code splitting and lazy loading.
+
+## Bundle Optimization Requirements
+**Critical:** Game phases add significant complexity and can severely impact bundle size. Each game phase must be code split and lazy loaded.
+
+### Optimization Targets
+- Split each game phase into separate chunks (PromptPhase, VotingPhase, etc.)
+- Lazy load game-specific animations and heavy UI components
+- Optimize framer-motion usage with dynamic imports
+- Bundle size target: Reduce impact to <100KB per game phase
+
+### Components to Optimize
+1. **Game Phases** - Each phase as separate lazy-loaded component
+2. **Animation Library** - Framer Motion loaded only when needed
+3. **Timer Components** - Split countdown and progress animations
+4. **Image Gallery** - Lazy load voting interface components
+5. **Game State Management** - Optimize real-time subscriptions
 
 ## Prerequisites
 - ✅ Completed Steps 0-2 (Setup, Auth, Rooms)
@@ -902,9 +918,231 @@ export const getGameState = query({
 });
 ```
 
+## Performance Optimization Setup
+
+Before implementing UI components, set up game phase code splitting:
+
+### 1. Create Game Phase Loader
+
+Create `src/utils/gamePhases.ts`:
+```typescript
+import { lazy, ComponentType } from "react";
+import { LoadingSpinner } from "../components/ui/loading";
+
+// Type for game phase props
+interface GamePhaseProps {
+  roomId: string;
+  gameState: any;
+  onPhaseComplete?: () => void;
+}
+
+// Enhanced lazy loading for game phases
+function createGamePhase<T extends ComponentType<GamePhaseProps>>(
+  importFunction: () => Promise<{ default: T }>,
+  phaseName: string
+) {
+  const LazyPhase = lazy(importFunction);
+  
+  return (props: GamePhaseProps) => (
+    <React.Suspense 
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-sm text-muted-foreground">
+            Loading {phaseName}...
+          </p>
+        </div>
+      }
+    >
+      <LazyPhase {...props} />
+    </React.Suspense>
+  );
+}
+
+// Lazy load all game phases
+export const PromptPhase = createGamePhase(
+  () => import("../features/game/phases/PromptPhase"),
+  "Prompt Phase"
+);
+
+export const GeneratingPhase = createGamePhase(
+  () => import("../features/game/phases/GeneratingPhase"),
+  "Generating Images"
+);
+
+export const VotingPhase = createGamePhase(
+  () => import("../features/game/phases/VotingPhase"),
+  "Voting Phase"
+);
+
+export const ResultsPhase = createGamePhase(
+  () => import("../features/game/phases/ResultsPhase"),
+  "Results Phase"
+);
+
+export const WaitingPhase = createGamePhase(
+  () => import("../features/game/phases/WaitingPhase"),
+  "Waiting for Players"
+);
+```
+
+### 2. Create Optimized Animation Utils
+
+Create `src/utils/animations.ts`:
+```typescript
+import { Variants } from "framer-motion";
+
+// Lazy load framer-motion only when animations are needed
+let motionImport: Promise<typeof import("framer-motion")> | null = null;
+
+export async function loadMotion() {
+  if (!motionImport) {
+    motionImport = import("framer-motion");
+  }
+  return motionImport;
+}
+
+// Optimized animation variants (lighter than importing all of framer-motion)
+export const fadeInUp: Variants = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 }
+};
+
+export const slideIn: Variants = {
+  initial: { x: 100, opacity: 0 },
+  animate: { x: 0, opacity: 1 },
+  exit: { x: -100, opacity: 0 }
+};
+
+export const scaleIn: Variants = {
+  initial: { scale: 0.8, opacity: 0 },
+  animate: { scale: 1, opacity: 1 },
+  exit: { scale: 0.8, opacity: 0 }
+};
+
+// Dynamic motion component loader
+export async function createMotionDiv() {
+  const { motion } = await loadMotion();
+  return motion.div;
+}
+
+export async function createMotionSpan() {
+  const { motion } = await loadMotion();
+  return motion.span;
+}
+```
+
+### 3. Create Optimized Timer Component
+
+Create `src/components/game/Timer.tsx`:
+```typescript
+import { useState, useEffect, useMemo } from "react";
+import { Progress } from "../ui/progress";
+import { Card } from "../ui/card";
+
+interface TimerProps {
+  endTime?: number;
+  totalDuration: number;
+  onTimeUp?: () => void;
+  showProgress?: boolean;
+  variant?: "default" | "warning" | "danger";
+}
+
+// Optimized timer without heavy animations initially
+export function Timer({ 
+  endTime, 
+  totalDuration, 
+  onTimeUp, 
+  showProgress = true,
+  variant = "default" 
+}: TimerProps) {
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  // Calculate time remaining efficiently
+  const { seconds, percentage, shouldWarn } = useMemo(() => {
+    if (!endTime || !mounted) return { seconds: 0, percentage: 0, shouldWarn: false };
+    
+    const now = Date.now();
+    const remaining = Math.max(0, Math.floor((endTime - now) / 1000));
+    const pct = Math.max(0, (remaining / (totalDuration / 1000)) * 100);
+    
+    return {
+      seconds: remaining,
+      percentage: pct,
+      shouldWarn: remaining < 10
+    };
+  }, [endTime, totalDuration, timeRemaining, mounted]);
+  
+  useEffect(() => {
+    if (!endTime || !mounted) return;
+    
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, endTime - now);
+      
+      setTimeRemaining(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(interval);
+        onTimeUp?.();
+      }
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, [endTime, onTimeUp, mounted]);
+  
+  const displayVariant = shouldWarn ? "danger" : variant;
+  
+  return (
+    <Card className={`p-4 ${displayVariant === "danger" ? "border-red-500" : ""}`}>
+      <div className="text-center space-y-2">
+        <div className={`text-2xl font-mono font-bold ${
+          displayVariant === "danger" ? "text-red-500" : "text-primary"
+        }`}>
+          {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, "0")}
+        </div>
+        
+        {showProgress && (
+          <Progress 
+            value={percentage} 
+            className={`h-2 ${displayVariant === "danger" ? "bg-red-100" : ""}`}
+          />
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// Lazy load enhanced timer with animations when needed
+export async function createEnhancedTimer() {
+  const [{ motion }, { Timer: BaseTimer }] = await Promise.all([
+    import("framer-motion"),
+    import("./Timer")
+  ]);
+  
+  return function EnhancedTimer(props: TimerProps) {
+    return (
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.2 }}
+      >
+        <BaseTimer {...props} />
+      </motion.div>
+    );
+  };
+}
+```
+
 ## UI Integration
 
-### 1. Create Game Hooks
+### 1. Create Optimized Game Hooks
 
 Create `src/hooks/use-game.ts`:
 
@@ -1038,23 +1276,35 @@ export function useGame(roomId: string | undefined) {
 }
 ```
 
-### 2. Update GameClient Component
+### 2. Update GameClient Component with Optimization
 
-Update `src/pages/GameClient.tsx`:
+Update `src/pages/GameClient.tsx` with lazy-loaded game phases:
 
 ```tsx
 import { useParams, useNavigate } from "react-router-dom";
+import { useMemo, Suspense } from "react";
 import { useGame } from "../hooks/use-game";
-import { Helmet } from "react-helmet-async";
-import { Button } from "@/components/ui/8bit/button";
-import { Card } from "@/components/ui/8bit/card";
-import { Loader2, ArrowLeft } from "lucide-react";
-import GameTopBar from "@/features/game/GameTopBar";
-import PlayerSidebar from "@/features/game/PlayerSidebar";
-import PhaseContainer from "@/features/game/PhaseContainer";
+import { LoadingSpinner } from "@/components/ui/loading";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { DynamicIcon } from "@/components/ui/dynamic-icon";
 
-const GameClient: React.FC = () => {
-  const { roomId } = useParams();
+// Import optimized game phase loader
+import {
+  PromptPhase,
+  GeneratingPhase,
+  VotingPhase,
+  ResultsPhase,
+  WaitingPhase
+} from "@/utils/gamePhases";
+
+// Lazy load heavy game components
+const GameTopBar = lazy(() => import("@/features/game/GameTopBar"));
+const PlayerSidebar = lazy(() => import("@/features/game/PlayerSidebar"));
+const GameLayout = lazy(() => import("@/features/game/GameLayout"));
+
+export default function GameClient() {
+  const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   
   const {
@@ -1068,10 +1318,29 @@ const GameClient: React.FC = () => {
     isLoading
   } = useGame(roomId);
   
-  if (isLoading) {
+  // Memoize phase component selection for performance
+  const PhaseComponent = useMemo(() => {
+    if (!currentPhase) return WaitingPhase;
+    
+    switch (currentPhase) {
+      case "prompt":
+      case "prompting":
+        return PromptPhase;
+      case "generating":
+        return GeneratingPhase;
+      case "voting":
+        return VotingPhase;
+      case "results":
+        return ResultsPhase;
+      default:
+        return WaitingPhase;
+    }
+  }, [currentPhase]);
+  
+  if (isLoading || !gameState) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -1083,14 +1352,13 @@ const GameClient: React.FC = () => {
           <h2 className="text-xl font-semibold mb-2">Game Not Found</h2>
           <p className="text-muted-foreground mb-4">This game doesn't exist or has ended.</p>
           <Button onClick={() => navigate("/dashboard")}>
+            <DynamicIcon name="ArrowLeft" className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Button>
         </Card>
       </div>
     );
   }
-  
-  const { room, round, players, images, myPrompt, myVote } = gameState;
   
   const handleLeave = () => {
     navigate(`/room/${roomId}`);
@@ -1102,58 +1370,55 @@ const GameClient: React.FC = () => {
   
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Helmet>
-        <title>{title}</title>
-        <meta name="description" content={description} />
-        <link rel="canonical" href={canonical} />
-      </Helmet>
-      
-      <header className="border-b border-border">
-        <GameTopBar
-          roomCode={roomId?.slice(-6).toUpperCase() || ""}
-          currentRound={room.currentRound}
-          totalRounds={room.totalRounds}
-          onLeave={handleLeave}
-        />
-      </header>
-      
-      <main className="container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <section className="lg:col-span-8 space-y-4">
-          <Card className="p-4">
-            <PhaseContainer
-              phase={currentPhase}
-              timeRemaining={timeRemaining}
-              currentQuestion={round?.question || ""}
-              players={players}
-              images={images}
-              myPrompt={myPrompt}
-              myVote={myVote}
-              hasSubmittedPrompt={hasSubmittedPrompt}
-              hasVoted={hasVoted}
-              onSubmitPrompt={handleSubmitPrompt}
-              onVote={handleSubmitVote}
-            />
-          </Card>
-        </section>
-        
-        <aside className="lg:col-span-4">
-          <PlayerSidebar
-            players={players}
-            currentPhase={currentPhase}
-            timeRemaining={timeRemaining}
+      {/* Game layout with lazy-loaded components */}
+      <Suspense fallback={<LoadingSpinner />}>
+        <GameLayout>
+          {/* Top bar */}
+          <GameTopBar
+            roomCode={roomId?.slice(-6).toUpperCase() || ""}
+            currentRound={gameState.room.currentRound || 1}
+            totalRounds={gameState.room.totalRounds || 5}
+            onLeave={handleLeave}
           />
-        </aside>
-        
-        <div className="lg:col-span-12 flex justify-center pt-2">
-          <Button variant="outline" onClick={handleLeave}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Room
-          </Button>
-        </div>
-      </main>
+          
+          {/* Main game area - optimized phase rendering */}
+          <main className="container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <section className="lg:col-span-8 space-y-4">
+              {/* Dynamically loaded phase component */}
+              <PhaseComponent
+                roomId={roomId!}
+                gameState={gameState}
+                onPhaseComplete={() => {
+                  // Phase completion handler
+                  console.log(`Phase ${currentPhase} completed`);
+                }}
+              />
+            </section>
+            
+            {/* Sidebar with lazy loading */}
+            <aside className="lg:col-span-4">
+              <Suspense fallback={<div className="h-32 bg-muted animate-pulse rounded" />}>
+                <PlayerSidebar
+                  players={gameState.players}
+                  currentPhase={currentPhase}
+                  timeRemaining={timeRemaining}
+                />
+              </Suspense>
+            </aside>
+            
+            {/* Navigation */}
+            <div className="lg:col-span-12 flex justify-center pt-2">
+              <Button variant="outline" onClick={handleLeave}>
+                <DynamicIcon name="ArrowLeft" className="h-4 w-4 mr-2" />
+                Back to Room
+              </Button>
+            </div>
+          </main>
+        </GameLayout>
+      </Suspense>
     </div>
   );
-};
+}
 
 export default GameClient;
 ```
@@ -1347,7 +1612,58 @@ mcp_convex_run --deploymentSelector dev --functionName "game:getGameState" --arg
 ### Issue: Scores not updating
 **Solution:** Check calculateScores runs after voting phase
 
+### Issue: Game phases loading slowly
+**Solution:** Verify lazy loading setup, check Suspense boundaries
+
+### Issue: Animations causing performance issues
+**Solution:** Use optimized animation utils, check framer-motion dynamic import
+
+## Bundle Optimization Verification
+
+After implementing game mechanics, verify performance improvements:
+
+### 1. Bundle Analysis
+```bash
+# Check game phase code splitting
+npm run build
+npm run build -- --analyze  # If analyzer configured
+
+# Expected results:
+# - Each game phase in separate chunks (<100KB each)
+# - Framer Motion loaded only when needed
+# - Dynamic icon loading working
+# - Total reduction: 100-200KB from game optimizations
+```
+
+### 2. Performance Testing
+```typescript
+// Test game phase lazy loading
+1. Open DevTools → Network tab
+2. Start a game
+3. Watch phases load dynamically as game progresses
+4. Verify framer-motion only loads when animations needed
+5. Check no large chunks during initial game load
+```
+
+### 3. Optimization Checklist
+- [ ] Each game phase (Prompt, Voting, Results) loads separately
+- [ ] GameClient uses lazy-loaded components
+- [ ] Animations use dynamic import system
+- [ ] Icons use DynamicIcon component
+- [ ] Timer component optimized
+- [ ] No console errors during phase transitions
+- [ ] Bundle analyzer shows proper game phase separation
+
+### 4. Performance Metrics
+Target achievements:
+- **Bundle Size:** Each phase chunk <100KB
+- **Phase Transitions:** <500ms between phases
+- **Animation Loading:** <100ms for framer-motion
+- **Initial Game Load:** <2s on 3G
+
 ## Success Criteria
+
+### Functional Requirements
 - [ ] Game starts and creates first round
 - [ ] Players can submit prompts
 - [ ] Phase transitions work automatically
@@ -1356,8 +1672,19 @@ mcp_convex_run --deploymentSelector dev --functionName "game:getGameState" --arg
 - [ ] Multiple rounds progress properly
 - [ ] Game ends after all rounds
 
+### Optimization Requirements
+- [ ] Game phases split into separate chunks
+- [ ] Bundle size reduced by 100-200KB from optimizations
+- [ ] Lazy loading works for all game components
+- [ ] Dynamic animations load only when needed
+- [ ] Phase transitions under 500ms
+- [ ] No performance regression during gameplay
+
 ## Next Steps
-Once core mechanics work:
-1. Test full game flow with multiple players
-2. Verify scoring system
-3. Proceed to **04-ai-integration-instructions.md**
+Once core mechanics work AND optimization verified:
+1. Run bundle analysis to verify size improvements
+2. Test game phase lazy loading in browser
+3. Test full game flow with multiple players
+4. Verify scoring system
+5. **Document performance improvements achieved**
+6. Proceed to **04-ai-integration-instructions.md**

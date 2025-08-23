@@ -1,7 +1,23 @@
-# Step 2: Room Management System
+# Step 2: Room Management System + Optimization
 
 ## Objective
 Implement a complete room management system for creating, joining, and managing game rooms with real-time updates.
+
+## Bundle Optimization Requirements
+**Critical:** This step adds room-related components that can significantly impact bundle size. You must implement lazy loading and code splitting to prevent bundle bloat.
+
+### Optimization Targets
+- Lazy load all room-related components
+- Split room settings into separate chunk
+- Optimize icon imports
+- Bundle size checkpoint: Target reduction of 50-100KB
+
+### Components to Optimize
+1. **Room Creation Dialog** - Lazy load with dynamic import
+2. **Room Settings Panel** - Separate chunk for configuration
+3. **Join Room Form** - Split from main room component
+4. **Room List/Browser** - Virtualize for large room lists
+5. **Real-time presence indicators** - Optimize subscription overhead
 
 ## Prerequisites
 - ✅ Completed Step 0 (Setup) and Step 1 (Authentication)
@@ -720,9 +736,86 @@ export function useCreateRoom() {
 }
 ```
 
-### 4. Create Room UI Components
+### 4. Bundle Optimization Setup
 
-Update `src/pages/Room.tsx` with complete UI integration:
+Before creating UI components, set up optimization strategies:
+
+#### Create Lazy Loading Utils
+
+Create `src/utils/lazy.ts`:
+```typescript
+import { lazy, ComponentType } from "react";
+import { LoadingSpinner } from "../components/ui/loading";
+
+// Enhanced lazy loading with better error handling
+export function createLazyComponent<T extends ComponentType<any>>(
+  importFunction: () => Promise<{ default: T }>,
+  fallback = <LoadingSpinner />
+) {
+  const LazyComponent = lazy(importFunction);
+  
+  return (props: React.ComponentProps<T>) => (
+    <React.Suspense fallback={fallback}>
+      <LazyComponent {...props} />
+    </React.Suspense>
+  );
+}
+
+// Icon lazy loader to replace lucide-react imports
+export async function loadIcon(iconName: string) {
+  try {
+    const iconModule = await import("lucide-react");
+    return iconModule[iconName as keyof typeof iconModule];
+  } catch (error) {
+    console.warn(`Failed to load icon: ${iconName}`);
+    return null;
+  }
+}
+```
+
+#### Create Dynamic Icon Component
+
+Create `src/components/ui/dynamic-icon.tsx`:
+```typescript
+import { useState, useEffect, FC } from "react";
+import { LucideProps } from "lucide-react";
+
+interface DynamicIconProps extends LucideProps {
+  name: string;
+  fallback?: FC<LucideProps>;
+}
+
+export function DynamicIcon({ name, fallback: Fallback, ...props }: DynamicIconProps) {
+  const [IconComponent, setIconComponent] = useState<FC<LucideProps> | null>(null);
+  
+  useEffect(() => {
+    const loadIcon = async () => {
+      try {
+        const iconModule = await import("lucide-react");
+        const Icon = iconModule[name as keyof typeof iconModule] as FC<LucideProps>;
+        setIconComponent(() => Icon);
+      } catch (error) {
+        console.warn(`Failed to load icon: ${name}`);
+        if (Fallback) {
+          setIconComponent(() => Fallback);
+        }
+      }
+    };
+    
+    loadIcon();
+  }, [name, Fallback]);
+  
+  if (!IconComponent) {
+    return <div className="w-4 h-4" {...props} />; // Placeholder
+  }
+  
+  return <IconComponent {...props} />;
+}
+```
+
+### 5. Create Optimized Room UI Components
+
+Update `src/pages/Room.tsx` with lazy loading optimization:
 
 ```tsx
 import { useParams } from "react-router-dom";
@@ -1171,6 +1264,42 @@ mcp_convex_data --deploymentSelector dev --tableName players --order asc
 mcp_convex_run --deploymentSelector dev --functionName "rooms:getPublicRooms" --args '{}'
 ```
 
+## Bundle Optimization Verification
+
+After implementing room management, verify optimization goals are met:
+
+### 1. Bundle Size Check
+```bash
+# Build and analyze bundle
+npm run build
+
+# Check chunk sizes
+ls -lh dist/assets/*.js
+
+# Expected improvements:
+# - Room components in separate chunks (<150KB each)
+# - Dynamic icon loading reduces initial bundle
+# - Total size reduction of 75-100KB
+```
+
+### 2. Performance Testing
+```typescript
+// Test lazy loading performance
+1. Open DevTools → Network tab  
+2. Navigate to room page
+3. Verify room components load on-demand
+4. Check dynamic icon loading works
+5. Measure time-to-interactive
+```
+
+### 3. Optimization Checklist
+- [ ] Room page uses lazy-loaded components
+- [ ] Icons use DynamicIcon component (no direct lucide imports)
+- [ ] RoomSettings loads in separate chunk
+- [ ] Loading states work properly during code splitting
+- [ ] No console errors during lazy loading
+- [ ] Bundle analyzer shows proper separation
+
 ## Common Issues & Solutions
 
 ### Issue: "Room not found" when joining
@@ -1182,7 +1311,15 @@ mcp_convex_run --deploymentSelector dev --functionName "rooms:getPublicRooms" --
 ### Issue: Players show as disconnected
 **Solution:** Implement presence system (coming in later step)
 
+### Issue: Lazy loading components fail
+**Solution:** Check dynamic imports and Suspense boundaries
+
+### Issue: Icons not loading
+**Solution:** Verify DynamicIcon component and lucide-react dynamic import
+
 ## Success Criteria
+
+### Functional Requirements
 - [ ] Can create rooms with unique codes
 - [ ] Can join rooms by code
 - [ ] Real-time player list updates
@@ -1191,8 +1328,19 @@ mcp_convex_run --deploymentSelector dev --functionName "rooms:getPublicRooms" --
 - [ ] Room shows correct player count and status
 - [ ] Can leave and rejoin rooms
 
+### Optimization Requirements
+- [ ] Bundle size reduced by 75-100KB from lazy loading
+- [ ] Room components split into separate chunks
+- [ ] Dynamic icon loading implemented
+- [ ] Loading states work during code splitting
+- [ ] No performance regression on navigation
+- [ ] Bundle analysis shows proper separation
+
 ## Next Steps
-Once room management is working:
-1. Test with multiple users joining same room
-2. Verify real-time updates work
-3. Proceed to **03-game-mechanics-instructions.md**
+Once room management is working AND optimization verified:
+1. Run `npm run build` and verify bundle size improvements
+2. Test lazy loading in browser DevTools
+3. Test with multiple users joining same room
+4. Verify real-time updates work
+5. **Document bundle size improvements achieved**
+6. Proceed to **03-game-mechanics-instructions.md**

@@ -1,7 +1,24 @@
-# Step 6: Dashboard & Statistics System
+# Step 6: Dashboard & Statistics + Route Optimization
 
 ## Objective
-Implement comprehensive game statistics, leaderboards, and user dashboard with historical data tracking.
+Implement comprehensive game statistics, leaderboards, and user dashboard with route-based code splitting and performance optimization.
+
+## Dashboard Optimization Requirements
+**Critical:** The dashboard contains multiple heavy components (charts, leaderboards, history). Implement aggressive route splitting and lazy loading.
+
+### Optimization Targets
+- Route-based splitting for dashboard page
+- Lazy loading of charts and visualizations
+- Virtual scrolling for leaderboards and game history
+- Paginated data loading with infinite scroll
+- Bundle impact: Dashboard chunks <200KB each
+
+### Components to Optimize
+1. **Dashboard Route** - Separate chunk from main app
+2. **Chart Libraries** - Lazy load visualization components
+3. **Leaderboards** - Virtual scrolling for large lists
+4. **Game History** - Paginated loading with infinite scroll
+5. **Statistics Cards** - Lightweight, cached stat displays
 
 ## Prerequisites
 - ✅ Completed Steps 0-5 (Full game functionality)
@@ -1003,7 +1020,29 @@ mcp_convex_data --deploymentSelector dev --tableName userStats --order desc
 mcp_convex_data --deploymentSelector dev --tableName achievements --order desc
 ```
 
+## Dashboard Optimization Verification
+
+### Performance Testing
+```bash
+# Test dashboard route splitting
+1. Open DevTools → Network tab
+2. Navigate to dashboard from another page
+3. Verify dashboard loads as separate chunk
+4. Check chart components lazy load
+5. Test leaderboard virtual scrolling performance
+```
+
+### Optimization Checklist
+- [ ] Dashboard route in separate chunk
+- [ ] Chart libraries lazy loaded
+- [ ] Leaderboards use virtual scrolling
+- [ ] Game history paginated
+- [ ] Bundle size <200KB per dashboard chunk
+- [ ] Dashboard loads fast on slow connections
+
 ## Success Criteria
+
+### Functional Requirements
 - [ ] Stats update after each game
 - [ ] Dashboard shows correct data
 - [ ] Achievements unlock properly
@@ -1011,8 +1050,18 @@ mcp_convex_data --deploymentSelector dev --tableName achievements --order desc
 - [ ] Recent games display accurately
 - [ ] Streaks track properly
 
+### Performance Requirements
+- [ ] Dashboard route split from main bundle
+- [ ] Charts load on-demand
+- [ ] Large lists scroll smoothly (60fps)
+- [ ] Bundle size within targets
+- [ ] Dashboard navigation <2s
+
 ## Next Steps
-Once statistics work:
-1. Test with multiple games
-2. Verify achievement conditions
-3. Proceed to **07-testing-deployment-instructions.md**
+Once statistics work AND dashboard optimized:
+1. Test dashboard performance with large datasets
+2. Verify chart lazy loading works
+3. Test with multiple games
+4. Verify achievement conditions
+5. **Verify route splitting and performance**
+6. Proceed to **07-testing-deployment-instructions.md**

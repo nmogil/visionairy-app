@@ -21,6 +21,37 @@ Throughout this implementation, you have access to Convex MCP tools for debuggin
 - npm or bun package manager
 - OpenAI API key for image generation
 
+### Bundle Optimization Requirements
+Before implementing any features, we must establish performance budgets and optimization strategies to prevent bundle bloat. Your current bundle is **826KB** (65% over the 500KB warning), so optimization is critical from the start.
+
+#### Performance Budgets
+- **JavaScript Bundle Size:** 
+  - Warning threshold: 500KB
+  - Maximum threshold: 750KB  
+  - Target: 400-450KB after optimization
+- **Initial Load Time:**
+  - Target: < 3 seconds on 3G
+  - Critical rendering path: < 1 second
+- **Code Splitting Requirements:**
+  - Route-based splitting mandatory
+  - Lazy load all non-critical components
+  - Keep auth flows synchronous for fast login
+
+#### Optimization Strategy Overview
+Each feature implementation must include:
+1. **Route-based code splitting** - Lazy load pages/features
+2. **Component-level splitting** - Dynamic imports for heavy components  
+3. **Icon optimization** - Replace lucide-react named imports with dynamic loading
+4. **Library optimization** - Tree-shake unused components
+5. **Bundle analysis** - Check size after each major feature
+
+#### Implementation Checkpoints
+After implementing each feature (Steps 1-6), you must:
+- [ ] Run `npm run build` and check bundle size
+- [ ] Ensure no single chunk exceeds 200KB
+- [ ] Verify lazy loading works correctly
+- [ ] Test performance on slow connections
+
 ### Step 1: Install Convex Dependencies
 
 ```bash
@@ -57,14 +88,43 @@ npx convex env set JWT_PRIVATE_KEY "$(openssl ecparam -name secp256k1 -genkey -n
 
 ### Step 4: Update Vite Configuration
 
-Update `vite.config.ts` to ensure proper environment variable handling:
+Update `vite.config.ts` with bundle optimization and performance settings:
 
 ```typescript
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'convex-vendor': ['convex', '@convex-dev/auth'],
+          'ui-vendor': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs'
+          ],
+          'animation-vendor': ['framer-motion'],
+          'utils-vendor': ['date-fns', 'clsx', 'tailwind-merge']
+        }
+      }
+    },
+    // Set chunk size warning limit
+    chunkSizeWarningLimit: 500,
+    // Enable source maps for production debugging
+    sourcemap: true
+  },
   define: {
     'process.env': process.env
   }
@@ -301,27 +361,135 @@ export const updateUsername = mutation({
 });
 ```
 
-### Step 5: Frontend Integration
+### Step 5: Frontend Integration with Lazy Loading
 
-Update `src/main.tsx`:
+Update `src/main.tsx` with optimized loading and error boundaries:
 
 ```tsx
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
-import React from "react";
+import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import { ConvexReactClient } from "convex/react";
+import { BrowserRouter } from "react-router-dom";
+import { ErrorBoundary } from "react-error-boundary";
 import App from "./App.tsx";
 import "./index.css";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
+// Error fallback component
+function ErrorFallback({ error }: { error: Error }) {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold mb-4">Something went wrong</h2>
+        <p className="text-muted-foreground mb-4">{error.message}</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-primary text-primary-foreground rounded"
+        >
+          Reload page
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p>Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ConvexAuthProvider client={convex}>
-      <App />
-    </ConvexAuthProvider>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <ConvexAuthProvider client={convex}>
+        <BrowserRouter>
+          <Suspense fallback={<LoadingFallback />}>
+            <App />
+          </Suspense>
+        </BrowserRouter>
+      </ConvexAuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );
+```
+
+### Step 6: Optimize App.tsx with Lazy Loading
+
+Update `src/App.tsx` to implement route-based code splitting:
+
+```tsx
+import { lazy, Suspense } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./hooks/use-auth";
+import { Header } from "./components/layout/Header";
+import { LoadingSpinner } from "./components/ui/loading";
+
+// Lazy load pages
+const Index = lazy(() => import("./pages/Index"));
+const Room = lazy(() => import("./pages/Room"));
+const GameClient = lazy(() => import("./pages/GameClient"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+
+// Keep auth pages synchronous for fast login
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+
+// Lazy load demo pages (not critical)
+const ImageGridDemo = lazy(() => import("./pages/ImageGridDemo"));
+const InteractionsStyleGuide = lazy(() => import("./pages/InteractionsStyleGuide"));
+
+function App() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          
+          {/* Protected routes */}
+          {user ? (
+            <>
+              <Route path="/" element={<Index />} />
+              <Route path="/room/:roomId" element={<Room />} />
+              <Route path="/game/:roomId" element={<GameClient />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              
+              {/* Demo routes - lazy loaded */}
+              <Route path="/demo/grid" element={<ImageGridDemo />} />
+              <Route path="/demo/interactions" element={<InteractionsStyleGuide />} />
+            </>
+          ) : (
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          )}
+        </Routes>
+      </Suspense>
+    </div>
+  );
+}
+
+export default App;
 ```
 
 Update authentication components in `src/components/auth/`:

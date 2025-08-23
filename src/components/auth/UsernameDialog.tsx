@@ -9,11 +9,12 @@ import { Loader2 } from "lucide-react";
 interface Props {
   open: boolean;
   onSubmit?: (username: string) => void;
+  onClose?: () => void;
 }
 
 const pattern = /^[a-zA-Z0-9_]+$/;
 
-export default function UsernameDialog({ open, onSubmit }: Props) {
+export default function UsernameDialog({ open, onSubmit, onClose }: Props) {
   const [username, setUsername] = useState("");
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -74,8 +75,15 @@ export default function UsernameDialog({ open, onSubmit }: Props) {
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    // Only allow closing if onClose callback is provided
+    if (!open && onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={() => { /* enforce open until saved */ }}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Choose a username</DialogTitle>

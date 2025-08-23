@@ -1,7 +1,25 @@
-# Step 7: Testing & Production Deployment
+# Step 7: Testing & Production Deployment + Performance
 
 ## Objective
-Comprehensive testing of all features and deployment to production with monitoring and optimization.
+Comprehensive testing of all features with performance budgets and optimized production deployment with monitoring.
+
+## Performance Budget Requirements
+**Critical:** Enforce performance budgets throughout testing to ensure optimization goals are met before production deployment.
+
+### Bundle Size Budgets
+- **Total Initial Bundle:** 400-450KB (down from 826KB baseline)
+- **Route Chunks:** <200KB each
+- **Game Phase Chunks:** <100KB each
+- **Vendor Chunks:** <300KB combined
+- **First Paint:** <1.5s on 3G
+- **Time to Interactive:** <3s on 3G
+
+### Performance Testing Scope
+1. **Bundle Analysis** - Verify all code splitting working
+2. **Lazy Loading** - Test all lazy-loaded components
+3. **Image Optimization** - Progressive loading performance
+4. **Real-time Performance** - Subscription overhead testing
+5. **Mobile Performance** - Touch interactions and responsiveness
 
 ## Prerequisites
 - ✅ Completed Steps 0-6 (All features implemented)
@@ -294,6 +312,117 @@ async function loadTest() {
 
 loadTest().catch(console.error);
 ```
+
+## Part 1.5: Performance Budget Verification
+
+Before production deployment, verify all optimization goals are met:
+
+### 1. Bundle Size Analysis
+```bash
+# Build and analyze bundle sizes
+npm run build
+
+# Check individual chunk sizes
+ls -lah dist/assets/*.js | sort -k5 -h
+
+# Expected chunk sizes:
+# - main.[hash].js: <200KB (down from 826KB)
+# - dashboard.[hash].js: <200KB
+# - game-phases.[hash].js: <150KB
+# - vendor-react.[hash].js: <200KB
+# - vendor-convex.[hash].js: <100KB
+```
+
+### 2. Performance Testing Script
+```bash
+# Create performance test script
+cat > test/performance.js << 'EOF'
+const { performance } = require('perf_hooks');
+
+async function testAppPerformance() {
+  console.log('Testing bundle optimization results...');
+  
+  // Test 1: Bundle size verification
+  const fs = require('fs');
+  const path = require('path');
+  const distDir = path.join(__dirname, '..', 'dist', 'assets');
+  
+  if (!fs.existsSync(distDir)) {
+    throw new Error('Build files not found. Run npm run build first.');
+  }
+  
+  const jsFiles = fs.readdirSync(distDir).filter(f => f.endsWith('.js'));
+  const totalSize = jsFiles.reduce((sum, file) => {
+    const stat = fs.statSync(path.join(distDir, file));
+    console.log(`${file}: ${(stat.size / 1024).toFixed(1)}KB`);
+    return sum + stat.size;
+  }, 0);
+  
+  const totalKB = totalSize / 1024;
+  console.log(`Total bundle size: ${totalKB.toFixed(1)}KB`);
+  
+  // Verify size targets
+  const sizeTargets = {
+    total: 450, // KB
+    maxChunk: 200
+  };
+  
+  if (totalKB > sizeTargets.total) {
+    throw new Error(`Bundle too large: ${totalKB}KB > ${sizeTargets.total}KB target`);
+  }
+  
+  const oversizedChunks = jsFiles.filter(file => {
+    const size = fs.statSync(path.join(distDir, file)).size / 1024;
+    return size > sizeTargets.maxChunk;
+  });
+  
+  if (oversizedChunks.length > 0) {
+    console.warn(`Warning: Large chunks found:`, oversizedChunks);
+  }
+  
+  console.log('✅ Bundle size verification passed');
+  
+  return { totalSize: totalKB, files: jsFiles.length };
+}
+
+testAppPerformance().catch(console.error);
+EOF
+
+# Run performance test
+node test/performance.js
+```
+
+### 3. Optimization Verification Checklist
+
+Run through this checklist before deployment:
+
+```bash
+# Functional verification
+- [ ] npm run build completes without errors
+- [ ] Bundle size under 450KB total
+- [ ] No chunks over 200KB
+- [ ] All lazy loading working (test in DevTools)
+- [ ] Image optimization working (progressive loading)
+- [ ] Dynamic icons loading properly
+- [ ] Game phases load as separate chunks
+- [ ] Dashboard route split correctly
+
+# Performance verification  
+- [ ] First paint under 1.5s on 3G simulation
+- [ ] Time to interactive under 3s
+- [ ] Smooth 60fps animations
+- [ ] No memory leaks during navigation
+- [ ] Real-time subscriptions optimized
+```
+
+### 4. Critical Performance Gates
+
+**Do not proceed to production if:**
+- Total bundle size > 450KB
+- Any single chunk > 200KB  
+- First paint > 2s on 3G
+- Memory leaks detected
+- Lazy loading not working
 
 ## Part 2: Production Deployment
 

@@ -1,7 +1,23 @@
 # Step 5: Real-time Presence & Updates
 
 ## Objective
-Implement real-time presence tracking, connection status, and live updates across all game components.
+Implement optimized real-time presence tracking, connection status, and efficient live updates across all game components.
+
+## Presence Optimization Requirements
+**Critical:** Real-time subscriptions can create performance bottlenecks and increase bundle size. Implement efficient presence management.
+
+### Optimization Targets
+- Debounced presence updates (max 1/second)
+- Efficient subscription cleanup to prevent memory leaks
+- Lazy loading of presence UI components
+- Minimize real-time subscription overhead
+- Bundle impact: <50KB added
+
+### Performance Considerations
+1. **Subscription Management** - Proper cleanup, debounced updates
+2. **Presence Indicators** - Lightweight status displays
+3. **Network Monitoring** - Optimized connection tracking
+4. **Typing Indicators** - Throttled to prevent spam
 
 ## Prerequisites
 - ✅ Completed Steps 0-4 (Setup through AI Integration)
@@ -724,16 +740,33 @@ mcp_convex_functionSpec --deploymentSelector dev | grep cron
 ### Issue: Typing indicator lag
 **Solution:** Reduce debounce time, optimize query subscriptions
 
+## Optimization Verification
+
+### Performance Checklist
+- [ ] Presence updates debounced (max 1/second)
+- [ ] Subscriptions properly cleaned up
+- [ ] No memory leaks from intervals
+- [ ] Bundle size increase <50KB
+- [ ] Presence indicators lazy loaded
+- [ ] Network monitoring optimized
+
 ## Success Criteria
+
+### Functional Requirements
 - [ ] Players show online/offline status correctly
 - [ ] Typing indicators appear in real-time
 - [ ] Connection recovery works smoothly
 - [ ] Stale presence is cleaned up
-- [ ] No memory leaks from intervals
-- [ ] Performance remains smooth with presence
+
+### Performance Requirements
+- [ ] No memory leaks from intervals/subscriptions
+- [ ] Performance remains smooth with presence active
+- [ ] Subscription overhead minimized
+- [ ] Bundle impact under target
 
 ## Next Steps
-Once presence system works:
-1. Test with multiple concurrent users
-2. Monitor performance impact
-3. Proceed to **06-dashboard-stats-instructions.md**
+Once presence system works AND optimization verified:
+1. Test presence performance with multiple concurrent users
+2. Monitor subscription overhead and memory usage
+3. Verify bundle size impact is acceptable
+4. Proceed to **06-dashboard-stats-instructions.md**
