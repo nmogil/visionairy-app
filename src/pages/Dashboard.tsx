@@ -17,6 +17,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { DoorOpen, Grid3X3, LogOut, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useCreateRoom, useJoinRoom } from "@/hooks/use-room";
 
 const mockStats = {
   gamesPlayed: 42,
@@ -44,6 +45,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
   const { signOut } = useAuthActions();
+  const { handleCreateRoom } = useCreateRoom();
+  const { handleJoinRoom: joinRoom } = useJoinRoom();
   const [showJoin, setShowJoin] = useState(false);
   const [roomCode, setRoomCode] = useState("");
 
@@ -53,18 +56,31 @@ const Dashboard = () => {
     []
   );
 
-  // Actions
-  const handleCreateRoom = () => {
-    const roomCode = "ABCDEF";
-    navigate(`/room/${roomCode}`);
+  // Actions - room creation handled by useCreateRoom hook
+  const handleCreateRoomClick = async () => {
+    const result = await handleCreateRoom("New Game Room", {
+      maxPlayers: 8,
+      roundsPerGame: 5,
+      timePerRound: 90,
+      isPrivate: false,
+    });
+    
+    if (!result.success && result.error) {
+      alert(result.error);
+    }
   };
 
-  const handleJoinRoom = () => {
-    if (!/^[A-Z]{6}$/.test(roomCode)) {
-      alert("Please enter a valid 6-letter code");
+  const handleJoinRoomClick = async () => {
+    if (!/^[A-Z0-9]{6}$/.test(roomCode)) {
+      alert("Please enter a valid 6-character code (letters and numbers)");
       return;
     }
-    navigate(`/room/${roomCode}`);
+    
+    const result = await joinRoom(roomCode);
+    if (!result.success) {
+      alert(result.error || "Failed to join room");
+    }
+    setShowJoin(false);
   };
 
   const handleSignOut = async () => {
@@ -140,7 +156,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Card className="transition-transform hover:-translate-x-px hover:-translate-y-px">
                 <button
-                  onClick={handleCreateRoom}
+                  onClick={handleCreateRoomClick}
                   className="flex h-full w-full flex-col items-start p-6 text-left"
                   aria-label="Create a new room"
                 >
@@ -286,14 +302,14 @@ const Dashboard = () => {
               className="h-12 text-center tracking-[0.1em] uppercase"
             />
             <p className="text-xs text-muted-foreground">
-              Only letters A–Z. Example: ABCDEF
+              Letters and numbers A-Z, 0-9. Example: ABC123
             </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowJoin(false)}>
               Cancel
             </Button>
-            <Button onClick={handleJoinRoom}>Join</Button>
+            <Button onClick={handleJoinRoomClick}>Join</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
