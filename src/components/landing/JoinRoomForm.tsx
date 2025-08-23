@@ -10,6 +10,11 @@ import { api } from "../../../convex/_generated/api";
 import { useToast } from "@/hooks/use-toast";
 import UsernameDialog from "@/components/auth/UsernameDialog";
 
+// Constants
+const ROOM_CODE_LENGTH = 6;
+const ROOM_CODE_REGEX = /^[A-Z0-9]{6}$/;
+const DEFAULT_ERROR_MESSAGE = "Unable to join room. Please try again.";
+
 export const JoinRoomForm = () => {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,13 +36,40 @@ export const JoinRoomForm = () => {
     });
   }, [navigate, toast]);
 
+  // Helper function to provide user-friendly error messages
+  const getErrorMessage = useCallback((backendError: string): string => {
+    if (backendError.includes("Room not found")) {
+      return "Room not found. Please check the code and try again.";
+    }
+    if (backendError.includes("Room is full")) {
+      return "This room is full. Try joining a different room.";
+    }
+    if (backendError.includes("Game already started")) {
+      return "This game has already started and doesn't allow late joining.";
+    }
+    if (backendError.includes("Game has ended")) {
+      return "This game has already ended. Please join a different room.";
+    }
+    if (backendError.includes("kicked from this room")) {
+      return "You have been removed from this room and cannot rejoin.";
+    }
+    if (backendError.includes("Not authenticated")) {
+      return "Authentication required. Please try again.";
+    }
+    if (backendError.includes("complete onboarding")) {
+      return "Please complete your profile setup first.";
+    }
+    // Generic fallback
+    return DEFAULT_ERROR_MESSAGE;
+  }, []);
+
   const handleJoin = useCallback(async () => {
     // Reset error state
     setError(null);
     
     // Validate room code format
-    if (!/^[A-Z0-9]{6}$/.test(code)) {
-      setError("Please enter a valid 6-character room code");
+    if (!ROOM_CODE_REGEX.test(code)) {
+      setError(`Please enter a valid ${ROOM_CODE_LENGTH}-character room code`);
       return;
     }
     
@@ -73,9 +105,11 @@ export const JoinRoomForm = () => {
           if (result.success && result.roomId) {
             navigateToRoom(result.roomId);
           }
-        } catch (joinError: any) {
+        } catch (joinError: unknown) {
           // Handle specific error cases from backend
-          const errorMessage = joinError.message || "Failed to join room";
+          const errorMessage = joinError instanceof Error 
+            ? joinError.message 
+            : DEFAULT_ERROR_MESSAGE;
           setError(getErrorMessage(errorMessage));
         }
       }
@@ -83,33 +117,6 @@ export const JoinRoomForm = () => {
       setIsJoining(false);
     }
   }, [code, isAuthenticated, isSigningIn, signIn, user, navigateToRoom, joinRoom, getErrorMessage]);
-
-  // Helper function to provide user-friendly error messages
-  const getErrorMessage = useCallback((backendError: string): string => {
-    if (backendError.includes("Room not found")) {
-      return "Room not found. Please check the code and try again.";
-    }
-    if (backendError.includes("Room is full")) {
-      return "This room is full. Try joining a different room.";
-    }
-    if (backendError.includes("Game already started")) {
-      return "This game has already started and doesn't allow late joining.";
-    }
-    if (backendError.includes("Game has ended")) {
-      return "This game has already ended. Please join a different room.";
-    }
-    if (backendError.includes("kicked from this room")) {
-      return "You have been removed from this room and cannot rejoin.";
-    }
-    if (backendError.includes("Not authenticated")) {
-      return "Authentication required. Please try again.";
-    }
-    if (backendError.includes("complete onboarding")) {
-      return "Please complete your profile setup first.";
-    }
-    // Generic fallback
-    return "Unable to join room. Please try again.";
-  }, []);
 
   const handleNameSubmit = useCallback(
     async (name: string) => {
@@ -123,8 +130,11 @@ export const JoinRoomForm = () => {
           if (result.success && result.roomId) {
             navigateToRoom(result.roomId);
           }
-        } catch (joinError: any) {
-          setError(getErrorMessage(joinError.message || "Failed to join room"));
+        } catch (joinError: unknown) {
+          const errorMessage = joinError instanceof Error 
+            ? joinError.message 
+            : DEFAULT_ERROR_MESSAGE;
+          setError(getErrorMessage(errorMessage));
         }
       } catch (error) {
         console.error("Failed to update username:", error);
@@ -135,7 +145,7 @@ export const JoinRoomForm = () => {
   );
 
   const isFormDisabled = isLoading || isSigningIn || isJoining;
-  const shouldShowError = error && code.length === 6;
+  const shouldShowError = error && code.length === ROOM_CODE_LENGTH;
 
   return (
     <>
@@ -153,9 +163,9 @@ export const JoinRoomForm = () => {
             aria-invalid={shouldShowError}
             placeholder="ROOM CODE"
             value={code}
-            maxLength={6}
+            maxLength={ROOM_CODE_LENGTH}
             onChange={(e) => {
-              const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+              const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, ROOM_CODE_LENGTH);
               setCode(next);
               if (error) setError(null); // Clear error when user starts typing
             }}
@@ -169,7 +179,7 @@ export const JoinRoomForm = () => {
             variant="outline" 
             size="xl" 
             aria-label="Join room with code"
-            disabled={isFormDisabled || code.length !== 6}
+            disabled={isFormDisabled || code.length !== ROOM_CODE_LENGTH}
           >
             {isJoining ? (
               <>
@@ -198,7 +208,7 @@ export const JoinRoomForm = () => {
         
         {/* Help text */}
         <div className="text-xs text-muted-foreground text-center px-2">
-          Enter a 6-character room code to join an existing game
+          Enter a {ROOM_CODE_LENGTH}-character room code to join an existing game
         </div>
       </form>
       <UsernameDialog open={showNameModal} onSubmit={handleNameSubmit} />
