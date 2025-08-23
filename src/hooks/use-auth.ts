@@ -17,6 +17,6 @@ export function useAuth() {
     isAuthenticated,
     isLoading,
     isNewUser: user?.isNewUser === true,
-    needsOnboarding: user && !user.username,
+    needsOnboarding: user && (!user.username || !user.onboardingCompleted),
   };
 }
