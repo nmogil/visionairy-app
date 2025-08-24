@@ -59,6 +59,30 @@ export const startGame = mutation({
   },
 });
 
+// Internal function to ensure question cards exist
+export const ensureQuestionCards = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const existingCards = await ctx.db
+      .query("questionCards")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .collect();
+    
+    if (existingCards.length > 0) {
+      console.log(`Found ${existingCards.length} existing question cards`);
+      return null;
+    }
+    
+    console.log("No question cards found, auto-seeding...");
+    
+    // Call the existing seed function
+    await ctx.runMutation(internal.admin.seedQuestionCardsInternal, {});
+    
+    return null;
+  },
+});
+
 // Initialize the game (internal)
 export const initializeGame = internalMutation({
   args: {
@@ -69,14 +93,18 @@ export const initializeGame = internalMutation({
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Room not found");
     
-    // Get random question card
+    // Ensure question cards exist before proceeding
+    await ctx.runMutation(internal.game.ensureQuestionCards, {});
+    
+    // Get random question card (now guaranteed to exist)
     const questionCards = await ctx.db
       .query("questionCards")
       .withIndex("by_active", (q) => q.eq("isActive", true))
       .collect();
       
+    // This should never happen now, but keep as safety check
     if (questionCards.length === 0) {
-      throw new Error("No question cards available");
+      throw new Error("Failed to seed question cards");
     }
     
     const randomCard = questionCards[Math.floor(Math.random() * questionCards.length)];
@@ -537,8 +565,21 @@ export const startNextRound = internalMutation({
       ? availableCards[Math.floor(Math.random() * availableCards.length)]
       : (await ctx.db.query("questionCards").withIndex("by_active", (q) => q.eq("isActive", true)).collect())[0];
     
+    // Fallback seeding if we somehow run out of cards
     if (!questionCard) {
-      throw new Error("No question cards available");
+      console.log("No question cards available for next round, auto-seeding...");
+      await ctx.runMutation(internal.game.ensureQuestionCards, {});
+      
+      const fallbackCards = await ctx.db
+        .query("questionCards")
+        .withIndex("by_active", (q) => q.eq("isActive", true))
+        .collect();
+        
+      if (fallbackCards.length === 0) {
+        throw new Error("Failed to seed question cards for next round");
+      }
+      
+      questionCard = fallbackCards[Math.floor(Math.random() * fallbackCards.length)];
     }
     
     // Create new round
