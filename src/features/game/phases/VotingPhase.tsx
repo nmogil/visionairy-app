@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Crown, Eye, Timer, Check, AlertCircle } from "lucide-react";
+import { X, Crown, Eye, Timer, Check, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/8bit/button";
 import { Card } from "@/components/ui/8bit/card";
 import { 
@@ -31,15 +31,6 @@ interface VotingPhaseProps {
   onVote: (imageId: Id<"generatedImages">) => void;
 }
 
-// Mock image URLs with different dimensions for variety
-const MOCK_IMAGES = [
-  "https://picsum.photos/400/400?random=1",
-  "https://picsum.photos/400/400?random=2", 
-  "https://picsum.photos/400/400?random=3",
-  "https://picsum.photos/400/400?random=4",
-  "https://picsum.photos/400/400?random=5",
-  "https://picsum.photos/400/400?random=6"
-];
 
 const VotingPhase: React.FC<VotingPhaseProps> = ({
   currentQuestion,
@@ -59,15 +50,8 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
   const progress = ((totalTime - timeRemaining) / totalTime) * 100;
   const isTimeWarning = timeRemaining <= 10;
   
-  // Use provided images or fallback to mock data for demo
-  const imagesToShow = images.length > 0 ? images : MOCK_IMAGES.slice(0, 3).map((url, index) => ({
-    _id: `mock-${index}` as Id<"generatedImages">,
-    promptId: `mock-prompt-${index}` as Id<"prompts">,
-    imageUrl: url,
-    promptText: `Mock prompt ${index + 1}`,
-    voteCount: 0,
-    isOwn: false
-  }));
+  // Use provided images directly
+  const imagesToShow = images;
 
   // Image click handler
   const handleImageClick = (image: typeof imagesToShow[0], index: number) => {
@@ -99,15 +83,6 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
     setPendingVote(null);
   };
 
-  // Get player name for image
-  const getPlayerName = (index: number) => {
-    const submission = submissions[index];
-    if (submission) {
-      const player = players.find(p => p.id === submission.playerId);
-      return player?.name || `Player ${index + 1}`;
-    }
-    return players[index]?.name || `Player ${index + 1}`;
-  };
 
   return (
     <div className="space-y-6">
@@ -269,10 +244,6 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
                     <div className="absolute inset-0 bg-warning/20 border-2 border-warning animate-pulse" />
                   )}
 
-                        {/* Click Indicator for Card Czar */}
-                        {isCzar && clickCount[index] === 1 && (
-                          <div className="absolute inset-0 bg-primary/10 animate-pulse" />
-                        )}
                       </motion.div>
                     </CardShadow>
                   </GlowEffect>

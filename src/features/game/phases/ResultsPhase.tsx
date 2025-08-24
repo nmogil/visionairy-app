@@ -38,13 +38,6 @@ interface ResultsPhaseProps {
   timeRemaining: number;
 }
 
-// Mock image URLs
-const MOCK_IMAGES = [
-  "https://picsum.photos/400/400?random=1",
-  "https://picsum.photos/400/400?random=2", 
-  "https://picsum.photos/400/400?random=3",
-  "https://picsum.photos/400/400?random=4",
-];
 
 const WINNER_MESSAGES = [
   "Absolutely unhinged! 🔥",
@@ -61,9 +54,10 @@ const WINNER_MESSAGES = [
 
 const CONFETTI_COLORS = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"];
 
-// Confetti component
+// Optimized Confetti component with fewer particles for better performance
 const Confetti: React.FC = () => {
-  const particles = Array.from({ length: 50 }, (_, i) => ({
+  // Reduce particle count from 50 to 25 for better performance
+  const particles = Array.from({ length: 25 }, (_, i) => ({
     id: i,
     color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
     x: Math.random() * 100,
@@ -80,6 +74,7 @@ const Confetti: React.FC = () => {
             backgroundColor: particle.color,
             left: `${particle.x}%`,
             top: "-10px",
+            willChange: "transform, opacity", // Optimize for animation
           }}
           animate={{
             y: ["0vh", "100vh"],
