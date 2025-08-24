@@ -4,7 +4,7 @@ import { LoadingSpinner } from "@/components/ui/loading";
 
 interface WaitingPhaseProps {
   roomId: string;
-  gameState?: any;
+  gameState?: unknown;
   onPhaseComplete?: () => void;
 }
 

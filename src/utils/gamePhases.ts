@@ -4,7 +4,7 @@ import { LoadingSpinner } from "../components/ui/loading";
 // Type for game phase props
 interface GamePhaseProps {
   roomId: string;
-  gameState: any;
+  gameState: unknown;
   onPhaseComplete?: () => void;
 }
 
@@ -16,18 +16,22 @@ function createGamePhase<T extends ComponentType<GamePhaseProps>>(
   const LazyPhase = lazy(importFunction);
   
   return (props: GamePhaseProps) => (
-    <React.Suspense 
-      fallback={
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-sm text-muted-foreground">
-            Loading {phaseName}...
-          </p>
-        </div>
-      }
-    >
-      <LazyPhase {...props} />
-    </React.Suspense>
+    React.createElement(
+      React.Suspense,
+      {
+        fallback: React.createElement(
+          'div',
+          { className: "flex flex-col items-center justify-center min-h-[400px]" },
+          React.createElement(LoadingSpinner, { size: "lg" }),
+          React.createElement(
+            'p',
+            { className: "mt-4 text-sm text-muted-foreground" },
+            `Loading ${phaseName}...`
+          )
+        )
+      },
+      React.createElement(LazyPhase, props)
+    )
   );
 }
 

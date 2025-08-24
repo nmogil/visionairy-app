@@ -38,7 +38,7 @@ export function GameTimer({
       percentage: pct,
       shouldWarn: remaining < 10
     };
-  }, [endTime, totalDuration, timeRemaining, mounted]);
+  }, [endTime, totalDuration, mounted]);
   
   useEffect(() => {
     if (!endTime || !mounted) return;
