@@ -6,24 +6,22 @@ import { Card } from "@/components/ui/8bit/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, AlertTriangle, CheckCircle } from "lucide-react";
 
-interface Player {
-  id: string;
-  name: string;
-  score: number;
-}
+import { Id } from "../../../../convex/_generated/dataModel";
 
-interface Submission {
-  playerId: string;
-  prompt: string;
-  imageUrl: string | null;
+interface Player {
+  _id: Id<"players">;
+  displayName: string;
+  score: number;
+  hasSubmitted?: boolean;
+  hasVoted?: boolean;
 }
 
 interface PromptPhaseProps {
   currentQuestion: string;
   timeRemaining: number;
-  submissions: Submission[];
+  hasSubmitted: boolean;
+  myPrompt?: string;
   players: Player[];
-  currentUserId: string;
   onSubmitPrompt: (prompt: string) => void;
 }
 
@@ -58,48 +56,28 @@ const PROFANITY_WORDS = ["damn", "hell", "stupid", "hate"]; // Basic filter
 const PromptPhase: React.FC<PromptPhaseProps> = ({
   currentQuestion,
   timeRemaining,
-  submissions,
+  hasSubmitted,
+  myPrompt,
   players,
-  currentUserId,
   onSubmitPrompt,
 }) => {
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(myPrompt || "");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentSuggestions, setCurrentSuggestions] = useState<string[]>([]);
   const [showSubmitted, setShowSubmitted] = useState(false);
   const [hasProfanity, setHasProfanity] = useState(false);
 
-  const hasSubmitted = submissions.some(s => s.playerId === currentUserId);
-  const submittedCount = submissions.length;
+  const submittedCount = players.filter(p => p.hasSubmitted).length;
   const totalPlayers = players.length;
   const remaining = 200 - prompt.length;
 
-  // Auto-save to localStorage
+  // Update prompt when myPrompt changes
   useEffect(() => {
-    if (!prompt.trim() || hasSubmitted) return;
-    
-    const saveTimer = setTimeout(() => {
-      localStorage.setItem(`prompt_draft_${currentUserId}`, prompt);
-    }, 2000);
-
-    return () => clearTimeout(saveTimer);
-  }, [prompt, currentUserId, hasSubmitted]);
-
-  // Load saved draft on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(`prompt_draft_${currentUserId}`);
-    if (saved && !hasSubmitted) {
-      setPrompt(saved);
+    if (myPrompt && !prompt) {
+      setPrompt(myPrompt);
     }
-  }, [currentUserId, hasSubmitted]);
-
-  // Clear draft after submission
-  useEffect(() => {
-    if (hasSubmitted) {
-      localStorage.removeItem(`prompt_draft_${currentUserId}`);
-    }
-  }, [hasSubmitted, currentUserId]);
+  }, [myPrompt, prompt]);
 
   // Animated placeholder cycling
   useEffect(() => {
