@@ -10,27 +10,25 @@ import {
   CardShadow 
 } from "@/components/interactions/MicroInteractions";
 
-interface Player {
-  id: string;
-  name: string;
-  score: number;
-}
+import { Id } from "../../../../convex/_generated/dataModel";
 
-interface Submission {
-  playerId: string;
-  prompt: string;
-  imageUrl: string | null;
+interface Image {
+  _id: Id<"generatedImages">;
+  promptId: Id<"prompts">;
+  imageUrl: string;
+  promptText: string;
+  voteCount: number;
+  isWinner?: boolean;
+  isOwn?: boolean;
 }
 
 interface VotingPhaseProps {
   currentQuestion: string;
-  generatedImages: string[];
-  players: Player[];
-  submissions: Submission[];
-  cardCzarId: string;
-  currentUserId: string;
+  images: Image[];
+  hasVoted: boolean;
+  myVote?: Id<"generatedImages">;
   timeRemaining: number;
-  onVote: (index: number) => void;
+  onVote: (imageId: Id<"generatedImages">) => void;
 }
 
 // Mock image URLs with different dimensions for variety
@@ -45,51 +43,46 @@ const MOCK_IMAGES = [
 
 const VotingPhase: React.FC<VotingPhaseProps> = ({
   currentQuestion,
-  generatedImages,
-  players,
-  submissions,
-  cardCzarId,
-  currentUserId,
+  images,
+  hasVoted,
+  myVote,
   timeRemaining,
   onVote,
 }) => {
-  const [selectedImage, setSelectedImage] = useState<number | null>(null);
+  const [selectedImage, setSelectedImage] = useState<Id<"generatedImages"> | null>(myVote || null);
   const [lightboxImage, setLightboxImage] = useState<number | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [pendingVote, setPendingVote] = useState<number | null>(null);
-  const [clickCount, setClickCount] = useState<{ [key: number]: number }>({});
+  const [pendingVote, setPendingVote] = useState<Id<"generatedImages"> | null>(null);
+  const [clickCount, setClickCount] = useState<{ [key: string]: number }>({});
 
-  const isCzar = cardCzarId === currentUserId;
-  const totalTime = 30; // 30 seconds for voting
+  const totalTime = 45; // 45 seconds for voting (from GAME_CONFIG.VOTING_PHASE_DURATION)
   const progress = ((totalTime - timeRemaining) / totalTime) * 100;
   const isTimeWarning = timeRemaining <= 10;
   
-  // Use mock images if no generated images provided
-  const imagesToShow = generatedImages.length > 0 ? generatedImages : MOCK_IMAGES.slice(0, players.length);
+  // Use provided images or fallback to mock data for demo
+  const imagesToShow = images.length > 0 ? images : MOCK_IMAGES.slice(0, 3).map((url, index) => ({
+    _id: `mock-${index}` as Id<"generatedImages">,
+    promptId: `mock-prompt-${index}` as Id<"prompts">,
+    imageUrl: url,
+    promptText: `Mock prompt ${index + 1}`,
+    voteCount: 0,
+    isOwn: false
+  }));
 
-  // Double-click protection
-  const handleImageClick = (index: number) => {
-    if (!isCzar) {
-      setLightboxImage(index);
-      return;
-    }
-
-    const currentCount = clickCount[index] || 0;
-    const newCount = currentCount + 1;
+  // Image click handler
+  const handleImageClick = (image: typeof imagesToShow[0], index: number) => {
+    // Always allow lightbox view
+    setLightboxImage(index);
     
-    setClickCount(prev => ({ ...prev, [index]: newCount }));
-
-    if (newCount === 1) {
-      // First click - start timer
-      setTimeout(() => {
-        setClickCount(prev => ({ ...prev, [index]: 0 }));
-      }, 300);
-    } else if (newCount === 2) {
-      // Double click - show confirmation
-      setPendingVote(index);
-      setShowConfirmation(true);
-      setClickCount(prev => ({ ...prev, [index]: 0 }));
-    }
+    // If already voted, don't allow change
+    if (hasVoted) return;
+    
+    // Check if it's user's own image
+    if (image.isOwn) return;
+    
+    // Show confirmation for voting
+    setPendingVote(image._id);
+    setShowConfirmation(true);
   };
 
   const handleConfirmVote = () => {
@@ -125,27 +118,27 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
             {currentQuestion}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {isCzar ? (
+            {hasVoted ? (
               <span className="flex items-center gap-2">
-                <Crown className="w-4 h-4 text-primary" />
-                You're the Card Czar - Choose the winner!
+                <CheckCircle className="w-4 h-4 text-success" />
+                Vote submitted! Waiting for results...
               </span>
             ) : (
-              "Waiting for Card Czar to choose the winner..."
+              "Click on an image to vote for your favorite!"
             )}
           </p>
         </div>
 
-        {/* Non-Czar Warning Banner */}
-        {!isCzar && (
+        {/* Voting Instructions */}
+        {!hasVoted && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-muted/80 border border-border px-4 py-2 rounded-none"
+            className="bg-primary/10 border border-primary/20 px-4 py-2 rounded-none"
           >
             <div className="flex items-center gap-2 text-sm">
-              <AlertCircle className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium">Click any image to view full-size</span>
+              <Eye className="w-4 h-4 text-primary" />
+              <span className="font-medium">Click on any image to vote (except your own)</span>
             </div>
           </motion.div>
         )}
@@ -185,14 +178,15 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
 
       {/* Images Grid */}
       <div className="relative">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
-          {imagesToShow.map((imageUrl, index) => {
-            const isSelected = selectedImage === index;
-            const isPending = pendingVote === index;
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+          {imagesToShow.map((image, index) => {
+            const isSelected = selectedImage === image._id;
+            const isPending = pendingVote === image._id;
+            const isMyVote = myVote === image._id;
             
             return (
               <motion.div
-                key={index}
+                key={image._id}
                 className="relative group"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -204,46 +198,48 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
                     <CardShadow>
                       <motion.div
                         className={`relative aspect-square overflow-hidden border-2 rounded-none cursor-pointer ${
-                          isSelected 
+                          isMyVote || isSelected
                             ? "border-primary shadow-lg" 
-                            : isCzar 
-                              ? "border-foreground hover:border-primary" 
-                              : "border-foreground"
+                            : image.isOwn
+                              ? "border-muted opacity-50" 
+                              : "border-foreground hover:border-primary"
                         }`}
-                        whileHover={isCzar ? { scale: 1.02 } : { scale: 1.01 }}
+                        whileHover={!image.isOwn && !hasVoted ? { scale: 1.02 } : { scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
-                        animate={
-                          isCzar && !isSelected ? {
-                            borderColor: ["hsl(var(--foreground))", "hsl(var(--primary))", "hsl(var(--foreground))"]
-                          } : {}
-                        }
-                        transition={
-                          isCzar && !isSelected ? {
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                          } : {}
-                        }
-                        onClick={() => handleImageClick(index)}
+                        onClick={() => handleImageClick(image, index)}
                       >
                   <img
-                    src={imageUrl}
-                    alt={`Generated image ${index + 1}`}
+                    src={image.imageUrl}
+                    alt={`Generated image for "${image.promptText}"`}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
 
-                  {/* Player Name Badge */}
-                  <div className="absolute top-2 left-2 bg-background/90 border border-foreground px-2 py-1 text-xs font-medium rounded-none">
-                    {getPlayerName(index)}
+                  {/* Prompt Text Badge */}
+                  <div className="absolute top-2 left-2 bg-background/90 border border-foreground px-2 py-1 text-xs font-medium rounded-none max-w-[80%] truncate">
+                    {image.promptText}
                   </div>
 
-                  {/* Hover Overlay for Non-Czar */}
-                  {!isCzar && (
+                  {/* Vote Count Badge */}
+                  {image.voteCount > 0 && (
+                    <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 text-xs font-bold rounded-none">
+                      {image.voteCount} 🗳️
+                    </div>
+                  )}
+
+                  {/* Own Image Indicator */}
+                  {image.isOwn && (
+                    <div className="absolute bottom-2 left-2 bg-muted text-muted-foreground px-2 py-1 text-xs rounded-none">
+                      Your Image
+                    </div>
+                  )}
+
+                  {/* Hover Overlay */}
+                  {!hasVoted && !image.isOwn && (
                     <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <div className="text-center space-y-2">
                         <Eye className="w-6 h-6 mx-auto text-foreground" />
-                        <p className="text-sm font-medium">Click to view</p>
+                        <p className="text-sm font-medium">Click to vote</p>
                       </div>
                     </div>
                   )}
@@ -295,10 +291,10 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
 
       {/* Instructions */}
       <div className="text-center text-sm text-muted-foreground">
-        {isCzar ? (
-          <p>Double-click an image to select the winner. Take your time!</p>
+        {hasVoted ? (
+          <p>Great! You've submitted your vote. Waiting for others to finish voting.</p>
         ) : (
-          <p>The Card Czar is choosing the winner. Click any image to view it full-size.</p>
+          <p>Click on any image to vote for your favorite (you cannot vote for your own image).</p>
         )}
       </div>
 
@@ -320,8 +316,8 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
               onClick={(e) => e.stopPropagation()}
             >
               <img
-                src={imagesToShow[lightboxImage]}
-                alt={`Full size image ${lightboxImage + 1}`}
+                src={imagesToShow[lightboxImage].imageUrl}
+                alt={`Full size image for "${imagesToShow[lightboxImage].promptText}"`}
                 className="w-full h-full object-contain"
               />
               <Button
@@ -333,8 +329,11 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
                 <X className="w-4 h-4" />
               </Button>
               <div className="absolute bottom-2 left-2 bg-background/90 border border-foreground px-3 py-2 rounded-none">
-                <p className="text-sm font-medium">{getPlayerName(lightboxImage)}</p>
-                <p className="text-xs text-muted-foreground">Image {lightboxImage + 1}</p>
+                <p className="text-sm font-medium">{imagesToShow[lightboxImage].promptText}</p>
+                <p className="text-xs text-muted-foreground">
+                  {imagesToShow[lightboxImage].voteCount} votes
+                  {imagesToShow[lightboxImage].isOwn && " • Your image"}
+                </p>
               </div>
             </motion.div>
           </motion.div>
@@ -357,18 +356,25 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
             >
               <CardShadow>
                 <Card className="p-6 max-w-md text-center space-y-4">
-                  <Crown className="w-12 h-12 text-primary mx-auto" />
-                  <h3 className="text-lg font-display">Confirm Winner</h3>
+                  <Check className="w-12 h-12 text-primary mx-auto" />
+                  <h3 className="text-lg font-display">Confirm Your Vote</h3>
                   <p className="text-sm text-muted-foreground">
-                    Are you sure you want to choose <strong>{getPlayerName(pendingVote)}</strong>'s image as the winner?
+                    Are you sure you want to vote for this image?
                   </p>
-                  <div className="aspect-square w-32 mx-auto border-2 border-foreground rounded-none overflow-hidden">
-                    <img
-                      src={imagesToShow[pendingVote]}
-                      alt="Selected winner"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  {pendingVote && (
+                    <div className="aspect-square w-32 mx-auto border-2 border-foreground rounded-none overflow-hidden">
+                      {(() => {
+                        const pendingImage = imagesToShow.find(img => img._id === pendingVote);
+                        return pendingImage ? (
+                          <img
+                            src={pendingImage.imageUrl}
+                            alt="Selected image"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -381,7 +387,7 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
                       onClick={handleConfirmVote}
                       className="flex-1"
                     >
-                      Confirm Winner
+                      Vote
                     </Button>
                   </div>
                 </Card>

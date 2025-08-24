@@ -11,24 +11,30 @@ import {
   CardShadow 
 } from "@/components/interactions/MicroInteractions";
 
+import { Id } from "../../../../convex/_generated/dataModel";
+
 interface Player {
-  id: string;
-  name: string;
+  _id: Id<"players">;
+  displayName: string;
   score: number;
+  hasSubmitted?: boolean;
+  hasVoted?: boolean;
 }
 
-interface Submission {
-  playerId: string;
-  prompt: string;
-  imageUrl: string | null;
+interface Image {
+  _id: Id<"generatedImages">;
+  promptId: Id<"prompts">;
+  imageUrl: string;
+  promptText: string;
+  voteCount: number;
+  isWinner?: boolean;
+  isOwn?: boolean;
 }
 
 interface ResultsPhaseProps {
   currentQuestion: string;
-  generatedImages: string[];
-  selectedWinner: number | null;
+  images: Image[];
   players: Player[];
-  submissions: Submission[];
   timeRemaining: number;
 }
 
@@ -93,31 +99,32 @@ const Confetti: React.FC = () => {
 
 const ResultsPhase: React.FC<ResultsPhaseProps> = ({
   currentQuestion,
-  generatedImages,
-  selectedWinner,
+  images,
   players,
-  submissions,
   timeRemaining,
 }) => {
   const [showConfetti, setShowConfetti] = useState(true);
   const [winnerMessage] = useState(WINNER_MESSAGES[Math.floor(Math.random() * WINNER_MESSAGES.length)]);
   const [showScoreAnimations, setShowScoreAnimations] = useState(false);
+  
+  // Find winning images (multiple winners possible due to ties)
+  const maxVotes = Math.max(...images.map(img => img.voteCount), 0);
+  const winningImages = images.filter(img => img.voteCount > 0 && img.voteCount === maxVotes);
+  const primaryWinner = winningImages[0]; // Show the first winner in UI
+  
+  // Create previous scores map (simulate what scores were before this round)
   const [previousScores] = useState<{ [key: string]: number }>(() => {
-    // Mock previous scores (1 point less for winner)
     const prev: { [key: string]: number } = {};
     players.forEach(player => {
-      prev[player.id] = player.score;
-      if (selectedWinner !== null && submissions[selectedWinner]?.playerId === player.id) {
-        prev[player.id] = Math.max(0, player.score - 1);
+      // Simulate previous score by subtracting points if they won
+      prev[player._id] = player.score;
+      const wonImage = winningImages.find(img => images.find(i => i._id === img._id && i.isOwn));
+      if (wonImage) {
+        prev[player._id] = Math.max(0, player.score - 100); // GAME_CONFIG.POINTS_PER_WIN
       }
     });
     return prev;
   });
-
-  const imagesToShow = generatedImages.length > 0 ? generatedImages : MOCK_IMAGES;
-  const winningImage = selectedWinner !== null ? imagesToShow[selectedWinner] : null;
-  const winningSubmission = selectedWinner !== null ? submissions[selectedWinner] : null;
-  const winningPlayer = winningSubmission ? players.find(p => p.id === winningSubmission.playerId) : null;
 
   // Stop confetti after 4 seconds and trigger score animations
   useEffect(() => {
@@ -129,11 +136,11 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
     };
   }, []);
 
-  const handleDownload = async () => {
-    if (!winningImage) return;
+  const handleDownload = async (imageUrl: string) => {
+    if (!imageUrl) return;
     
     try {
-      const response = await fetch(winningImage);
+      const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -160,7 +167,7 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
   };
 
   const getScoreChange = (player: Player) => {
-    const previous = previousScores[player.id] || 0;
+    const previous = previousScores[player._id] || 0;
     const change = player.score - previous;
     if (change > 0) return { type: 'up', value: change };
     if (change < 0) return { type: 'down', value: Math.abs(change) };
@@ -191,7 +198,7 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
         </GentlePulse>
 
         {/* Winner Message */}
-        {winningPlayer && (
+        {primaryWinner && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -199,8 +206,17 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
             className="space-y-2"
           >
             <p className="text-lg font-medium">
-              🎉 <span className="text-primary">{winningPlayer.name}</span> wins this round! 🎉
+              🎉 Winner{winningImages.length > 1 ? 's' : ''} this round! 🎉
             </p>
+            {winningImages.length > 1 ? (
+              <p className="text-sm text-muted-foreground">
+                {winningImages.length} images tied with {maxVotes} votes each!
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Won with {primaryWinner.voteCount} votes!
+              </p>
+            )}
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -214,7 +230,7 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
       </div>
 
       {/* Winning Image Showcase */}
-      {winningImage && winningSubmission && (
+      {primaryWinner && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -240,7 +256,7 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
                         transition={{ duration: 2, repeat: Infinity }}
                       >
                         <img
-                          src={winningImage}
+                          src={primaryWinner.imageUrl}
                           alt="Winning submission"
                           className="w-full h-full object-cover"
                         />
@@ -255,13 +271,18 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
                             <Crown className="w-5 h-5 text-primary-foreground" />
                           </motion.div>
                         </div>
+
+                        {/* Vote count badge */}
+                        <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-2 py-1 text-sm font-bold rounded-none">
+                          {primaryWinner.voteCount} 🗳️
+                        </div>
                       </motion.div>
                     </GentlePulse>
                   </GlowEffect>
 
-                  {/* Enhanced +1 Point Animation */}
+                  {/* Enhanced +100 Points Animation */}
                   <PointAddition 
-                    points={1} 
+                    points={100} 
                     isVisible={showScoreAnimations} 
                     className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
                   />
@@ -272,13 +293,13 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
                 <div>
                   <h3 className="text-xl font-display mb-2">Winning Prompt:</h3>
                   <p className="text-lg italic bg-muted/50 p-4 rounded-none border-l-4 border-primary">
-                    "{winningSubmission.prompt}"
+                    "{primaryWinner.promptText}"
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
                   <Button
-                    onClick={handleDownload}
+                    onClick={() => handleDownload(primaryWinner.imageUrl)}
                     variant="outline"
                     size="sm"
                     className="flex items-center gap-2"
@@ -312,30 +333,49 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
         </motion.div>
       )}
 
-      {/* All Submissions */}
+      {/* All Submissions Gallery */}
       <div className="space-y-4">
         <h3 className="text-lg font-display text-center">All Submissions</h3>
-        <ImageGallery
-          images={imagesToShow.map((imageUrl, index) => {
-            const submission = submissions[index];
-            const player = submission ? players.find(p => p.id === submission.playerId) : players[index];
-            return {
-              id: `submission-${index}`,
-              url: imageUrl,
-              player: player?.name || `Player ${index + 1}`,
-              prompt: submission?.prompt || currentQuestion,
-              timestamp: new Date(),
-              isFavorite: selectedWinner === index,
-              metadata: {
-                width: 400,
-                height: 400,
-              },
-            } as ImageData;
-          })}
-          className="mt-4"
-          enableComparison={true}
-          autoLayout={true}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {images.map((image) => (
+            <motion.div
+              key={image._id}
+              className="relative group"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <Card className={`overflow-hidden ${image.isWinner ? 'border-primary' : ''}`}>
+                <div className="aspect-square relative">
+                  <img
+                    src={image.imageUrl}
+                    alt={`Image for "${image.promptText}"`}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Winner badge */}
+                  {image.isWinner && (
+                    <div className="absolute top-2 right-2">
+                      <Crown className="w-6 h-6 text-primary" />
+                    </div>
+                  )}
+                  
+                  {/* Vote count */}
+                  <div className="absolute bottom-2 right-2 bg-background/90 border border-foreground px-2 py-1 text-xs font-bold rounded-none">
+                    {image.voteCount} 🗳️
+                  </div>
+                  
+                  {/* Prompt text overlay */}
+                  <div className="absolute inset-0 bg-background/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
+                    <p className="text-center text-sm font-medium">
+                      "{image.promptText}"
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* Enhanced Scoreboard */}
@@ -350,16 +390,16 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
             <div className="space-y-2">
               {sortedPlayers.map((player, index) => {
                 const scoreChange = getScoreChange(player);
-                const isWinner = winningPlayer?.id === player.id;
+                const playerHasWonImage = winningImages.some(img => img.isOwn);
                 
                 return (
                   <motion.div
-                    key={player.id}
+                    key={player._id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 1.4 + index * 0.1 }}
                     className={`flex items-center justify-between p-3 bg-muted/30 rounded-none border border-border ${
-                      isWinner ? 'bg-primary/10 border-primary' : ''
+                      playerHasWonImage ? 'bg-primary/10 border-primary' : ''
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -367,8 +407,8 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
                         {index === 0 && <Trophy className="w-5 h-5 text-primary" />}
                         {index === 1 && <Star className="w-4 h-4 text-muted-foreground" />}
                         {index === 2 && <Sparkles className="w-4 h-4 text-muted-foreground" />}
-                        <span className="font-medium">{player.name}</span>
-                        {isWinner && <Crown className="w-4 h-4 text-primary" />}
+                        <span className="font-medium">{player.displayName}</span>
+                        {playerHasWonImage && <Crown className="w-4 h-4 text-primary" />}
                       </div>
                     </div>
 
@@ -402,7 +442,7 @@ const ResultsPhase: React.FC<ResultsPhaseProps> = ({
                       <div className="text-right">
                         <motion.div 
                           className="text-lg font-bold"
-                          animate={isWinner && showScoreAnimations ? { 
+                          animate={playerHasWonImage && showScoreAnimations ? { 
                             scale: [1, 1.2, 1],
                             color: ["hsl(var(--foreground))", "hsl(var(--primary))", "hsl(var(--foreground))"]
                           } : {}}
