@@ -439,7 +439,7 @@ Run through this checklist before deployment:
 
 ### Environment Variables
 - [ ] Production Convex URL set
-- [ ] OpenAI API key configured
+- [ ] FAL AI API key configured
 - [ ] JWT secret generated
 - [ ] SITE_URL points to production domain
 
@@ -541,7 +541,7 @@ export const healthCheck = httpAction(async (ctx) => {
     // Check database connection
     const testQuery = await ctx.runQuery(internal.monitoring.checkDatabase);
     
-    // Check OpenAI API
+    // Check FAL AI API
     const apiStatus = process.env.FAL_API_KEY ? "configured" : "missing";
     
     return new Response(
@@ -549,7 +549,7 @@ export const healthCheck = httpAction(async (ctx) => {
         status: "healthy",
         timestamp: Date.now(),
         database: testQuery ? "connected" : "error",
-        openai: apiStatus,
+        falAI: apiStatus,
       }),
       {
         status: 200,
@@ -712,7 +712,7 @@ Set up alerts for:
 
 ### Scaling Actions
 1. Increase Convex compute units
-2. Upgrade OpenAI API tier
+2. Upgrade FAL AI API tier
 3. Implement image caching CDN
 4. Add request queuing
 5. Implement progressive loading

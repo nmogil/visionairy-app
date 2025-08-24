@@ -1,6 +1,6 @@
 # AI Image Party
 
-A multiplayer party game where players generate AI images to match creative prompts. Think Cards Against Humanity meets DALL-E — players submit text prompts to create images, and a rotating "Card Czar" picks the best/funniest submission each round.
+A multiplayer party game where players generate AI images to match creative prompts. Think Cards Against Humanity meets FAL AI — players submit text prompts to create images, and a rotating "Card Czar" picks the best/funniest submission each round.
 
 ## Tech Stack
 
@@ -8,7 +8,7 @@ A multiplayer party game where players generate AI images to match creative prom
 - **Backend**: Convex (reactive database, real-time functions)
 - **UI**: shadcn/ui + Tailwind CSS + Radix UI
 - **Auth**: Convex Auth with OAuth support
-- **AI**: OpenAI Images API integration
+- **AI**: FAL AI Flux model integration
 - **Mobile**: Capacitor for native mobile apps
 - **Animations**: Framer Motion
 - **State**: React Query + Convex subscriptions
@@ -57,7 +57,7 @@ convex/
 ✅ **Landing Page** - Marketing site with game explanation  
 🚧 **Room Management** - Create/join game rooms (in progress)  
 🚧 **Game Flow** - Multi-phase gameplay with timers  
-🚧 **AI Integration** - DALL-E image generation  
+🚧 **AI Integration** - FAL AI image generation  
 🚧 **Real-time Updates** - Convex subscriptions for live gameplay  
 
 ## Development

@@ -6,7 +6,7 @@ Set up the Convex backend infrastructure and configure the development environme
 ## Prerequisites
 - Node.js 18+ installed
 - npm or bun package manager
-- Access to OpenAI API key
+- Access to FAL AI API key
 - Existing React/Vite frontend application
 
 ## Deliverables
@@ -48,7 +48,7 @@ npx convex dev
 # Set the site URL for authentication redirects
 npx convex env set SITE_URL http://localhost:5173
 
-# Set OpenAI API key for image generation
+# Set FAL AI API key for image generation
 npx convex env set FAL_API_KEY your_fal_api_key_here
 npx convex env set FAL_ENABLE_SAFETY_CHECKER true
 
