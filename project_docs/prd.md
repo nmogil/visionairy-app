@@ -4,7 +4,7 @@
 
 ### 1.1 Product Overview
 
-An online multiplayer party game where players compete by generating AI images in response to creative prompts. Players submit text prompts to OpenAI's DALL-E API to generate images that best match the round's question card. A rotating "Card Czar" judges the submissions, awarding points for the most entertaining, creative, or fitting images. The game features a complete web application with marketing pages, authentication flows, user dashboards, and real-time gameplay powered by Convex's reactive backend.
+An online multiplayer party game where players compete by generating AI images in response to creative prompts. Players submit text prompts to FAL AI's Flux model to generate images that best match the round's question card. A rotating "Card Czar" judges the submissions, awarding points for the most entertaining, creative, or fitting images. The game features a complete web application with marketing pages, authentication flows, user dashboards, and real-time gameplay powered by Convex's reactive backend.
 
 ### 1.2 Key Technologies
 
@@ -12,7 +12,7 @@ An online multiplayer party game where players compete by generating AI images i
 - **UI Components**: shadcn/ui + Tailwind CSS
 - **Backend**: Convex (reactive database, functions, file storage)
 - **Authentication**: Convex Auth (built-in OAuth & email/password)
-- **AI Generation**: OpenAI Images API (DALL-E 3)
+- **AI Generation**: FAL AI (Flux Model)
 - **Deployment**: Vercel (Static) + Convex Cloud (backend)
 - **Real-time**: Convex reactive subscriptions
 - **Analytics**: Vercel Analytics + PostHog
@@ -92,7 +92,7 @@ An online multiplayer party game where players compete by generating AI images i
          └── Real-time Subscriptions
                     ↓
          External Services
-         ├── OpenAI DALL-E API
+         ├── FAL AI (Flux Model)
          └── OAuth Providers (Google, GitHub, etc.)
 ```
 
@@ -201,13 +201,13 @@ sequenceDiagram
     participant U as User
     participant V as Vite App
     participant C as Convex
-    participant O as OpenAI
+    participant F as FAL AI
     
     U->>V: Submit prompt text
     V->>C: Call generateImage mutation
     C->>C: Validate prompt
-    C->>O: Request image generation
-    O-->>C: Return image URL
+    C->>F: Request image generation
+    F-->>C: Return image URL
     C->>C: Store image in Convex Storage
     C->>C: Update game state
     C-->>V: Return via subscription
@@ -483,7 +483,7 @@ describe('Game Flow', () => {
 
 **Implementation**:
 
-- OpenAI API integration in Convex
+- FAL AI integration in Convex
 - Parallel image generation from prompts
 - Image storage in Convex
 - Error handling with fallback to placeholder
@@ -1213,7 +1213,7 @@ export const generateImage = mutation({
     playerId: v.id("players"),
   },
   handler: async (ctx, args) => {
-    // Call OpenAI API
+    // Call FAL AI
     // Store image in Convex storage
     // Create generatedImages record
     // Returns: { imageId: Id<"generatedImages">, imageUrl: string }
@@ -1276,6 +1276,7 @@ cd ai-image-party-game
 
 # Install core dependencies
 npm install convex @convex-dev/auth
+npm install @fal-ai/client
 npm install react-router-dom @types/react-router-dom
 npm install @radix-ui/react-avatar @radix-ui/react-dialog @radix-ui/react-dropdown-menu
 npm install @radix-ui/react-label @radix-ui/react-select @radix-ui/react-separator
@@ -1316,7 +1317,8 @@ VITE_APP_URL=http://localhost:3000
 
 ```env
 # Convex Dashboard Environment Variables
-OPENAI_API_KEY=sk-...
+FAL_API_KEY=your-fal-api-key
+FAL_ENABLE_SAFETY_CHECKER=true
 
 # OAuth Provider Configuration (optional)
 AUTH_GOOGLE_ID=your-google-client-id

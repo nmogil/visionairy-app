@@ -26,8 +26,8 @@ npm install convex @convex-dev/auth
 # Install additional dependencies  
 npm install --save-dev @types/node
 
-# Install OpenAI SDK for later use
-npm install openai
+# Install FAL AI client for later use
+npm install @fal-ai/client
 ```
 
 ### 2. Initialize Convex Project
@@ -49,7 +49,8 @@ npx convex dev
 npx convex env set SITE_URL http://localhost:5173
 
 # Set OpenAI API key for image generation
-npx convex env set OPENAI_API_KEY your_openai_api_key_here
+npx convex env set FAL_API_KEY your_fal_api_key_here
+npx convex env set FAL_ENABLE_SAFETY_CHECKER true
 
 # Optional: Generate and set JWT private key for enhanced security
 npx convex env set JWT_PRIVATE_KEY "$(openssl ecparam -name secp256k1 -genkey -noout | openssl ec -outform DER | tail -c +8 | head -c 32 | xxd -p -c 32)"
@@ -156,7 +157,7 @@ interface ImportMeta {
    ```bash
    npx convex env list
    ```
-   Should show SITE_URL and OPENAI_API_KEY
+   Should show SITE_URL, FAL_API_KEY, and FAL_ENABLE_SAFETY_CHECKER
 
 3. **Test deployment connection:**
    - Open browser to the URL shown in terminal

@@ -19,7 +19,7 @@ Throughout this implementation, you have access to Convex MCP tools for debuggin
 ### Prerequisites
 - Node.js 18+ installed
 - npm or bun package manager
-- OpenAI API key for image generation
+- FAL AI API key for image generation
 
 ### Bundle Optimization Requirements
 Before implementing any features, we must establish performance budgets and optimization strategies to prevent bundle bloat. Your current bundle is **826KB** (65% over the 500KB warning), so optimization is critical from the start.
@@ -80,7 +80,8 @@ npx convex dev
 ```bash
 # Set required environment variables for development
 npx convex env set SITE_URL http://localhost:5173
-npx convex env set OPENAI_API_KEY your_openai_api_key_here
+npx convex env set FAL_API_KEY your_fal_api_key_here
+npx convex env set FAL_ENABLE_SAFETY_CHECKER true
 
 # Optional: Set JWT secret for enhanced security
 npx convex env set JWT_PRIVATE_KEY "$(openssl ecparam -name secp256k1 -genkey -noout | openssl ec -outform DER | tail -c +8 | head -c 32 | xxd -p -c 32)"
@@ -1028,7 +1029,7 @@ import {
 } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import OpenAI from "openai";
+import { fal } from "@fal-ai/client";
 
 // Initialize game after room starts
 export const initializeGame = internalMutation({
@@ -1417,8 +1418,9 @@ export const getGameState = query({
 Add to `convex/game.ts`:
 
 ```typescript
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Configure FAL AI
+fal.config({
+  credentials: process.env.FAL_API_KEY,
 });
 
 // Generate images for all prompts
@@ -1442,16 +1444,18 @@ export const generateImages = internalAction({
         // Combine question and prompt for better context
         const fullPrompt = `${questionCard.text} ${prompt.text}`;
         
-        const response = await openai.images.generate({
-          model: "dall-e-3",
-          prompt: fullPrompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "standard",
-          style: "vivid",
+        const result = await fal.subscribe("fal-ai/flux/dev", {
+          input: {
+            prompt: fullPrompt,
+            image_size: "landscape_4_3",
+            num_inference_steps: 28,
+            guidance_scale: 3.5,
+            num_images: 1,
+            enable_safety_checker: process.env.FAL_ENABLE_SAFETY_CHECKER === "true",
+          },
         });
         
-        const imageUrl = response.data[0].url;
+        const imageUrl = result.images[0].url;
         if (!imageUrl) throw new Error("No image URL returned");
         
         // Store image URL
@@ -1459,8 +1463,9 @@ export const generateImages = internalAction({
           promptId: prompt._id,
           imageUrl,
           metadata: {
-            model: "dall-e-3",
-            revisedPrompt: response.data[0].revised_prompt,
+            model: "flux-dev",
+            seed: result.seed,
+            inference_steps: 28,
           },
         });
       } catch (error) {
@@ -2304,7 +2309,7 @@ await convex.mutation(api.game.submitVote, {
 
 ### Issue: Image generation fails
 **Solution:**
-- Verify OPENAI_API_KEY is valid
+- Verify FAL_API_KEY is valid
 - Check API rate limits
 - Implement retry logic
 - Provide fallback images

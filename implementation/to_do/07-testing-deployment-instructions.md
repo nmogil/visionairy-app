@@ -472,7 +472,8 @@ npm run build
 npx convex deploy --prod
 
 # Step 3: Set production environment variables
-npx convex env set OPENAI_API_KEY your_production_key --prod
+npx convex env set FAL_API_KEY your_production_key --prod
+npx convex env set FAL_ENABLE_SAFETY_CHECKER true --prod
 npx convex env set SITE_URL https://yourdomain.com --prod
 npx convex env set JWT_PRIVATE_KEY "$(openssl ecparam -name secp256k1 -genkey -noout | openssl ec -outform DER | tail -c +8 | head -c 32 | xxd -p -c 32)" --prod
 
@@ -541,7 +542,7 @@ export const healthCheck = httpAction(async (ctx) => {
     const testQuery = await ctx.runQuery(internal.monitoring.checkDatabase);
     
     // Check OpenAI API
-    const apiStatus = process.env.OPENAI_API_KEY ? "configured" : "missing";
+    const apiStatus = process.env.FAL_API_KEY ? "configured" : "missing";
     
     return new Response(
       JSON.stringify({

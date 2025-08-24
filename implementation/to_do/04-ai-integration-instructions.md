@@ -1,7 +1,7 @@
 # Step 4: AI Image Generation + Optimization
 
 ## Objective
-Replace placeholder images with real AI-generated images using OpenAI's DALL-E 3 API with optimized image loading and display.
+Replace placeholder images with real AI-generated images using FAL AI's Flux model with optimized image loading and display.
 
 ## Image Optimization Requirements
 **Critical:** AI image generation and display can significantly impact performance. Implement progressive loading, lazy loading, and optimized image handling.
@@ -22,11 +22,11 @@ Replace placeholder images with real AI-generated images using OpenAI's DALL-E 3
 
 ## Prerequisites
 - ✅ Completed Steps 0-3 (Setup, Auth, Rooms, Game Mechanics)
-- ✅ OpenAI API key configured in environment
+- ✅ FAL AI API key configured in environment
 - ✅ Game flow working with placeholder images
 
 ## Deliverables
-- ✅ DALL-E 3 integration for image generation
+- ✅ FAL AI Flux model integration for image generation
 - ✅ Parallel image generation for all prompts
 - ✅ Error handling and fallbacks
 - ✅ Image storage and retrieval
@@ -281,11 +281,11 @@ export function ImageGallery({
 }
 ```
 
-### 2. Install OpenAI SDK
+### 2. Install FAL AI Client
 
 ```bash
 # If not already installed
-npm install openai
+npm install @fal-ai/client
 ```
 
 ### 2. Update Game.ts with AI Generation
@@ -306,11 +306,11 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { GAME_CONFIG } from "./lib/constants";
 import { Id } from "./_generated/dataModel";
-import OpenAI from "openai";
+import { fal } from "@fal-ai/client";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Initialize FAL AI client
+fal.config({
+  credentials: process.env.FAL_API_KEY,
 });
 
 // ... keep all existing functions ...
@@ -386,16 +386,18 @@ export const generateAIImages = internalAction({
         
         console.log(`Generating image for prompt: ${fullPrompt}`);
         
-        const response = await openai.images.generate({
-          model: "dall-e-3",
-          prompt: fullPrompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "standard",
-          style: "vivid",
+        const result = await fal.subscribe("fal-ai/flux/dev", {
+          input: {
+            prompt: fullPrompt,
+            image_size: "landscape_4_3",
+            num_inference_steps: 28,
+            guidance_scale: 3.5,
+            num_images: 1,
+            enable_safety_checker: process.env.FAL_ENABLE_SAFETY_CHECKER === "true",
+          },
         });
         
-        const imageUrl = response.data[0].url;
+        const imageUrl = result.images[0].url;
         if (!imageUrl) throw new Error("No image URL returned");
         
         console.log(`Generated image URL: ${imageUrl}`);
@@ -405,8 +407,9 @@ export const generateAIImages = internalAction({
           promptId: prompt._id,
           imageUrl,
           metadata: {
-            model: "dall-e-3",
-            revisedPrompt: response.data[0].revised_prompt,
+            model: "flux-dev",
+            seed: result.seed,
+            inference_steps: 28,
           },
         });
       } catch (error) {
@@ -537,7 +540,7 @@ export const getPromptsForRound = internalQuery({
 Create `convex/lib/imageGeneration.ts`:
 
 ```typescript
-import OpenAI from "openai";
+import { fal } from "@fal-ai/client";
 
 // Rate limiting configuration
 const RATE_LIMIT = {
@@ -546,7 +549,6 @@ const RATE_LIMIT = {
 };
 
 export async function generateImagesWithRateLimit(
-  openai: OpenAI,
   prompts: Array<{ id: string; text: string }>,
   questionText: string
 ): Promise<Map<string, { url?: string; error?: string; metadata?: any }>> {
@@ -560,20 +562,23 @@ export async function generateImagesWithRateLimit(
       try {
         const fullPrompt = createEnhancedPrompt(questionText, prompt.text);
         
-        const response = await openai.images.generate({
-          model: "dall-e-3",
-          prompt: fullPrompt,
-          n: 1,
-          size: "1024x1024",
-          quality: "standard",
-          style: "vivid",
+        const result = await fal.subscribe("fal-ai/flux/dev", {
+          input: {
+            prompt: fullPrompt,
+            image_size: "landscape_4_3",
+            num_inference_steps: 28,
+            guidance_scale: 3.5,
+            num_images: 1,
+            enable_safety_checker: process.env.FAL_ENABLE_SAFETY_CHECKER === "true",
+          },
         });
         
         results.set(prompt.id, {
-          url: response.data[0].url,
+          url: result.images[0].url,
           metadata: {
-            model: "dall-e-3",
-            revisedPrompt: response.data[0].revised_prompt,
+            model: "flux-dev",
+            seed: result.seed,
+            inference_steps: 28,
           },
         });
       } catch (error) {
@@ -679,7 +684,6 @@ export const generateAIImages = internalAction({
     
     // Generate with rate limiting
     const results = await generateImagesWithRateLimit(
-      openai,
       promptsToGenerate,
       round.questionText
     );
@@ -715,10 +719,11 @@ Update `convex/schema.ts` to add image caching:
 imageCache: defineTable({
   promptHash: v.string(), // Hash of prompt text
   imageUrl: v.string(),
-  metadata: v.optional(v.object({
-    model: v.string(),
-    revisedPrompt: v.optional(v.string()),
-  })),
+      metadata: v.optional(v.object({
+      model: v.string(),
+      seed: v.optional(v.number()),
+      inference_steps: v.optional(v.number()),
+    })),
   createdAt: v.number(),
   expiresAt: v.number(),
 })
@@ -993,8 +998,11 @@ export default GeneratingPhase;
 
 ### 1. Test API Key Configuration
 ```bash
-# Verify OpenAI API key is set
-mcp_convex_envGet --deploymentSelector dev --name OPENAI_API_KEY
+# Verify FAL AI API key is set
+mcp_convex_envGet --deploymentSelector dev --name FAL_API_KEY
+
+# Verify safety checker configuration
+mcp_convex_envGet --deploymentSelector dev --name FAL_ENABLE_SAFETY_CHECKER
 ```
 
 ### 2. Test Single Image Generation
@@ -1016,7 +1024,7 @@ console.log("Generation status:", status);
 ### 4. Test Error Handling
 ```typescript
 // Test with invalid API key
-npx convex env set OPENAI_API_KEY invalid_key
+npx convex env set FAL_API_KEY invalid_key
 // Run game and check fallback images appear
 ```
 
@@ -1029,8 +1037,8 @@ mcp_convex_data --deploymentSelector dev --tableName generatedImages --order des
 # Check for errors
 mcp_convex_data --deploymentSelector dev --tableName generatedImages --order desc | grep error
 
-# Monitor OpenAI API usage
-# Check your OpenAI dashboard at https://platform.openai.com/usage
+# Monitor FAL AI API usage
+# Check your FAL AI dashboard at https://fal.ai/dashboard
 ```
 
 ## Common Issues & Solutions
@@ -1039,7 +1047,7 @@ mcp_convex_data --deploymentSelector dev --tableName generatedImages --order des
 **Solution:** 
 - Reduce `maxConcurrent` in rate limiting config
 - Add longer delays between batches
-- Upgrade OpenAI API tier
+- Upgrade FAL AI subscription tier
 
 ### Issue: Images not generating in time
 **Solution:**
@@ -1059,18 +1067,31 @@ mcp_convex_data --deploymentSelector dev --tableName generatedImages --order des
 - Provide clearer prompt guidelines to players
 - Add fallback prompts for rejected content
 
+## Configuration Options
+
+### Safety Checker
+The `FAL_ENABLE_SAFETY_CHECKER` environment variable controls content filtering:
+- **`true` (recommended)**: Enables safety checks to filter inappropriate content
+- **`false`**: Disables safety checks for faster generation (use with caution)
+
+**Usage scenarios:**
+- **Production**: Always set to `true` for user-generated content
+- **Development**: Can be set to `false` for testing, but use `true` for realistic testing
+- **Private/Internal**: Consider `false` for faster generation in controlled environments
+
 ## Cost Optimization Tips
 
 1. **Development Testing:**
    - Use smaller image sizes (512x512)
    - Limit to 2-3 players during testing
    - Reuse cached images when possible
+   - Consider disabling safety checker (`FAL_ENABLE_SAFETY_CHECKER=false`) for faster development iteration
 
 2. **Production:**
    - Implement prompt caching
    - Batch similar prompts
-   - Monitor usage via OpenAI dashboard
-   - Set spending limits on OpenAI account
+   - Monitor usage via FAL AI dashboard
+   - Set spending limits on FAL AI account
 
 3. **Fallback Strategy:**
    - Keep placeholder system as backup
