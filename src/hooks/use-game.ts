@@ -30,10 +30,11 @@ export function useGame(roomId: string | undefined) {
         title: "Prompt submitted!",
         description: "Waiting for other players...",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Please try again";
       toast({
         title: "Failed to submit prompt",
-        description: error.message || "Please try again",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -52,10 +53,11 @@ export function useGame(roomId: string | undefined) {
         title: "Vote submitted!",
         description: "Waiting for results...",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Please try again";
       toast({
         title: "Failed to submit vote",
-        description: error.message || "Please try again",
+        description: errorMessage,
         variant: "destructive"
       });
     }
@@ -68,9 +70,10 @@ export function useGame(roomId: string | undefined) {
       return;
     }
     
+    const phaseEndTime = gameState.round.phaseEndTime;
     const updateTimer = () => {
       const now = Date.now();
-      const remaining = Math.max(0, Math.floor((gameState.round!.phaseEndTime! - now) / 1000));
+      const remaining = Math.max(0, Math.floor((phaseEndTime - now) / 1000));
       setTimeRemaining(remaining);
     };
     
