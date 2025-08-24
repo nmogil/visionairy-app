@@ -144,6 +144,10 @@ export const JoinRoomForm = () => {
     [code, updateUsername, navigateToRoom, joinRoom, getErrorMessage]
   );
 
+  const handleNameClose = useCallback(() => {
+    setShowNameModal(false);
+  }, []);
+
   const isFormDisabled = isLoading || isSigningIn || isJoining;
   const shouldShowError = error && code.length === ROOM_CODE_LENGTH;
 
@@ -211,7 +215,7 @@ export const JoinRoomForm = () => {
           Enter a {ROOM_CODE_LENGTH}-character room code to join an existing game
         </div>
       </form>
-      <UsernameDialog open={showNameModal} onSubmit={handleNameSubmit} />
+      <UsernameDialog open={showNameModal} onSubmit={handleNameSubmit} onClose={handleNameClose} />
     </>
   );
 };

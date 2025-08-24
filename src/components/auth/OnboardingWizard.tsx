@@ -98,9 +98,10 @@ const steps: OnboardingStep[] = [
 interface OnboardingWizardProps {
   open: boolean;
   onComplete?: () => void;
+  onClose?: () => void;
 }
 
-export function OnboardingWizard({ open, onComplete }: OnboardingWizardProps) {
+export function OnboardingWizard({ open, onComplete, onClose }: OnboardingWizardProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({});
   const [error, setError] = useState<string | null>(null);
@@ -153,10 +154,16 @@ export function OnboardingWizard({ open, onComplete }: OnboardingWizardProps) {
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && onClose) {
+      onClose();
+    }
+  };
+
   const CurrentStepComponent = currentStep.component;
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden p-0">
         <div className="p-6 space-y-6">
           {/* Header */}

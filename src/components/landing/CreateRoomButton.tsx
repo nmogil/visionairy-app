@@ -106,6 +106,10 @@ export const CreateRoomButton = () => {
     [updateUsername, createAndNavigateToRoom]
   );
 
+  const handleNameClose = useCallback(() => {
+    setShowNameModal(false);
+  }, []);
+
   return (
     <>
       <Button 
@@ -118,7 +122,7 @@ export const CreateRoomButton = () => {
         {isCreatingRoom ? <Loader2 className="animate-spin" /> : <Play />}
         {isLoading || isSigningIn ? "Loading..." : isCreatingRoom ? "Creating..." : "Create Room"}
       </Button>
-      <UsernameDialog open={showNameModal} onSubmit={handleNameSubmit} />
+      <UsernameDialog open={showNameModal} onSubmit={handleNameSubmit} onClose={handleNameClose} />
     </>
   );
 };
