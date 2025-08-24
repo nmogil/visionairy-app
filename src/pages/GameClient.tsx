@@ -114,6 +114,9 @@ export default function GameClient() {
               <PhaseComponent
                 roomId={roomId!}
                 gameState={gameState}
+                timeRemaining={timeRemaining}
+                handleSubmitPrompt={handleSubmitPrompt}
+                handleSubmitVote={handleSubmitVote}
                 onPhaseComplete={() => {
                   // Phase completion handler
                   console.log(`Phase ${currentPhase} completed`);

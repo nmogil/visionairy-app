@@ -2,15 +2,41 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Sparkles, Zap } from "lucide-react";
 
-interface Player {
-  id: string;
-  name: string;
-  score: number;
-}
-
 interface GeneratingPhaseProps {
-  players: Player[];
+  roomId: string;
+  gameState: {
+    room: {
+      status: string;
+      currentRound?: number;
+      totalRounds: number;
+    };
+    round?: {
+      _id: string;
+      status: string;
+      phaseEndTime?: number;
+      question: string;
+    };
+    players: Array<{
+      _id: string;
+      displayName: string;
+      score: number;
+      hasSubmitted: boolean;
+      hasVoted: boolean;
+    }>;
+    images: Array<{
+      _id: string;
+      promptId: string;
+      imageUrl: string;
+      promptText: string;
+      voteCount: number;
+      isWinner: boolean;
+      isOwn: boolean;
+    }>;
+    myPrompt?: string;
+    myVote?: string;
+  };
   timeRemaining: number;
+  onPhaseComplete?: () => void;
 }
 
 const LOADING_MESSAGES = [
@@ -29,9 +55,10 @@ const LOADING_MESSAGES = [
 const PARTICLES_COUNT = 20;
 
 const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
-  players,
+  gameState,
   timeRemaining,
 }) => {
+  const { players } = gameState;
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedCards, setCompletedCards] = useState<Set<number>>(new Set());
   const [progress, setProgress] = useState(0);
@@ -195,7 +222,7 @@ const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
             const isCompleted = completedCards.has(index);
             return (
               <motion.div
-                key={player.id}
+                key={player._id}
                 className="space-y-2"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -276,7 +303,7 @@ const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
                   className="text-center"
                   animate={isCompleted ? { color: "hsl(var(--success))" } : {}}
                 >
-                  <p className="text-sm font-medium truncate">{player.name}</p>
+                  <p className="text-sm font-medium truncate">{player.displayName}</p>
                   <p className="text-xs text-muted-foreground">
                     {isCompleted ? "Ready!" : "Generating..."}
                   </p>

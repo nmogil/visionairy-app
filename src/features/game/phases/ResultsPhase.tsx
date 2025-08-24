@@ -13,29 +13,43 @@ import {
 
 import { Id } from "../../../../convex/_generated/dataModel";
 
-interface Player {
-  _id: Id<"players">;
-  displayName: string;
-  score: number;
-  hasSubmitted?: boolean;
-  hasVoted?: boolean;
-}
-
-interface Image {
-  _id: Id<"generatedImages">;
-  promptId: Id<"prompts">;
-  imageUrl: string;
-  promptText: string;
-  voteCount: number;
-  isWinner?: boolean;
-  isOwn?: boolean;
-}
-
 interface ResultsPhaseProps {
-  currentQuestion: string;
-  images: Image[];
-  players: Player[];
+  roomId: string;
+  gameState: {
+    room: {
+      status: string;
+      currentRound?: number;
+      totalRounds: number;
+    };
+    round?: {
+      _id: string;
+      status: string;
+      phaseEndTime?: number;
+      question: string;
+    };
+    players: Array<{
+      _id: string;
+      displayName: string;
+      score: number;
+      hasSubmitted: boolean;
+      hasVoted: boolean;
+    }>;
+    images: Array<{
+      _id: string;
+      promptId: string;
+      imageUrl: string;
+      promptText: string;
+      voteCount: number;
+      isWinner: boolean;
+      isOwn: boolean;
+    }>;
+    myPrompt?: string;
+    myVote?: string;
+  };
   timeRemaining: number;
+  handleSubmitPrompt?: (prompt: string) => Promise<void>;
+  handleSubmitVote?: (imageId: string) => Promise<void>;
+  onPhaseComplete?: () => void;
 }
 
 
@@ -93,11 +107,11 @@ const Confetti: React.FC = () => {
 };
 
 const ResultsPhase: React.FC<ResultsPhaseProps> = ({
-  currentQuestion,
-  images,
-  players,
+  gameState,
   timeRemaining,
 }) => {
+  const { players, images, round } = gameState;
+  const currentQuestion = round?.question || "Round Results";
   const [showConfetti, setShowConfetti] = useState(true);
   const [winnerMessage] = useState(WINNER_MESSAGES[Math.floor(Math.random() * WINNER_MESSAGES.length)]);
   const [showScoreAnimations, setShowScoreAnimations] = useState(false);

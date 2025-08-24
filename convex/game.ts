@@ -561,7 +561,7 @@ export const startNextRound = internalMutation({
       .filter((q) => !usedCardIds.includes(q._id))
       .collect();
     
-    const questionCard = availableCards.length > 0
+    let questionCard = availableCards.length > 0
       ? availableCards[Math.floor(Math.random() * availableCards.length)]
       : (await ctx.db.query("questionCards").withIndex("by_active", (q) => q.eq("isActive", true)).collect())[0];
     

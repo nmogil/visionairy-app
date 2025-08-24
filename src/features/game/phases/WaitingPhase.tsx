@@ -4,7 +4,40 @@ import { LoadingSpinner } from "@/components/ui/loading";
 
 interface WaitingPhaseProps {
   roomId: string;
-  gameState?: unknown;
+  gameState: {
+    room: {
+      status: string;
+      currentRound?: number;
+      totalRounds: number;
+    };
+    round?: {
+      _id: string;
+      status: string;
+      phaseEndTime?: number;
+      question: string;
+    };
+    players: Array<{
+      _id: string;
+      displayName: string;
+      score: number;
+      hasSubmitted: boolean;
+      hasVoted: boolean;
+    }>;
+    images: Array<{
+      _id: string;
+      promptId: string;
+      imageUrl: string;
+      promptText: string;
+      voteCount: number;
+      isWinner: boolean;
+      isOwn: boolean;
+    }>;
+    myPrompt?: string;
+    myVote?: string;
+  };
+  timeRemaining: number;
+  handleSubmitPrompt?: (prompt: string) => Promise<void>;
+  handleSubmitVote?: (imageId: string) => Promise<void>;
   onPhaseComplete?: () => void;
 }
 

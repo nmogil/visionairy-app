@@ -8,21 +8,43 @@ import { Lightbulb, AlertTriangle, CheckCircle } from "lucide-react";
 
 import { Id } from "../../../../convex/_generated/dataModel";
 
-interface Player {
-  _id: Id<"players">;
-  displayName: string;
-  score: number;
-  hasSubmitted?: boolean;
-  hasVoted?: boolean;
-}
-
 interface PromptPhaseProps {
-  currentQuestion: string;
+  roomId: string;
+  gameState: {
+    room: {
+      status: string;
+      currentRound?: number;
+      totalRounds: number;
+    };
+    round?: {
+      _id: string;
+      status: string;
+      phaseEndTime?: number;
+      question: string;
+    };
+    players: Array<{
+      _id: string;
+      displayName: string;
+      score: number;
+      hasSubmitted: boolean;
+      hasVoted: boolean;
+    }>;
+    images: Array<{
+      _id: string;
+      promptId: string;
+      imageUrl: string;
+      promptText: string;
+      voteCount: number;
+      isWinner: boolean;
+      isOwn: boolean;
+    }>;
+    myPrompt?: string;
+    myVote?: string;
+  };
   timeRemaining: number;
-  hasSubmitted: boolean;
-  myPrompt?: string;
-  players: Player[];
-  onSubmitPrompt: (prompt: string) => void;
+  handleSubmitPrompt?: (prompt: string) => Promise<void>;
+  handleSubmitVote?: (imageId: string) => Promise<void>;
+  onPhaseComplete?: () => void;
 }
 
 const EXAMPLE_PROMPTS = [
@@ -54,13 +76,19 @@ const AI_SUGGESTIONS = [
 const PROFANITY_WORDS = ["damn", "hell", "stupid", "hate"]; // Basic filter
 
 const PromptPhase: React.FC<PromptPhaseProps> = ({
-  currentQuestion,
+  gameState,
   timeRemaining,
-  hasSubmitted,
-  myPrompt,
-  players,
-  onSubmitPrompt,
+  handleSubmitPrompt,
 }) => {
+  const { players, myPrompt, round } = gameState;
+  const currentQuestion = round?.question || "Create something amazing";
+  const hasSubmitted = !!myPrompt;
+  
+  const onSubmitPrompt = async (prompt: string) => {
+    if (handleSubmitPrompt) {
+      await handleSubmitPrompt(prompt);
+    }
+  };
   const [prompt, setPrompt] = useState(myPrompt || "");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);

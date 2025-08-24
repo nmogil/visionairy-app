@@ -12,38 +12,64 @@ import {
 
 import { Id } from "../../../../convex/_generated/dataModel";
 
-interface Image {
-  _id: Id<"generatedImages">;
-  promptId: Id<"prompts">;
-  imageUrl: string;
-  promptText: string;
-  voteCount: number;
-  isWinner?: boolean;
-  isOwn?: boolean;
-}
-
 interface VotingPhaseProps {
-  currentQuestion: string;
-  images: Image[];
-  hasVoted: boolean;
-  myVote?: Id<"generatedImages">;
+  roomId: string;
+  gameState: {
+    room: {
+      status: string;
+      currentRound?: number;
+      totalRounds: number;
+    };
+    round?: {
+      _id: string;
+      status: string;
+      phaseEndTime?: number;
+      question: string;
+    };
+    players: Array<{
+      _id: string;
+      displayName: string;
+      score: number;
+      hasSubmitted: boolean;
+      hasVoted: boolean;
+    }>;
+    images: Array<{
+      _id: string;
+      promptId: string;
+      imageUrl: string;
+      promptText: string;
+      voteCount: number;
+      isWinner: boolean;
+      isOwn: boolean;
+    }>;
+    myPrompt?: string;
+    myVote?: string;
+  };
   timeRemaining: number;
-  onVote: (imageId: Id<"generatedImages">) => void;
+  handleSubmitPrompt?: (prompt: string) => Promise<void>;
+  handleSubmitVote?: (imageId: string) => Promise<void>;
+  onPhaseComplete?: () => void;
 }
 
 
 const VotingPhase: React.FC<VotingPhaseProps> = ({
-  currentQuestion,
-  images,
-  hasVoted,
-  myVote,
+  gameState,
   timeRemaining,
-  onVote,
+  handleSubmitVote,
 }) => {
-  const [selectedImage, setSelectedImage] = useState<Id<"generatedImages"> | null>(myVote || null);
+  const { images, round, myVote } = gameState;
+  const currentQuestion = round?.question || "Vote for your favorite";
+  const hasVoted = !!myVote;
+  
+  const onVote = async (imageId: string) => {
+    if (handleSubmitVote) {
+      await handleSubmitVote(imageId);
+    }
+  };
+  const [selectedImage, setSelectedImage] = useState<string | null>(myVote || null);
   const [lightboxImage, setLightboxImage] = useState<number | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [pendingVote, setPendingVote] = useState<Id<"generatedImages"> | null>(null);
+  const [pendingVote, setPendingVote] = useState<string | null>(null);
   const [clickCount, setClickCount] = useState<{ [key: string]: number }>({});
 
   const totalTime = 45; // 45 seconds for voting (from GAME_CONFIG.VOTING_PHASE_DURATION)
