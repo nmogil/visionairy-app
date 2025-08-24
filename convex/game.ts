@@ -1,14 +1,23 @@
+"use node";
+
 import { 
   query, 
   mutation, 
   internalMutation, 
-  internalQuery 
+  internalQuery,
+  internalAction 
 } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { GAME_CONFIG } from "./lib/constants";
 import { Id } from "./_generated/dataModel";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { fal } from "@fal-ai/client";
+
+// Configure FAL AI
+fal.config({
+  credentials: process.env.FAL_API_KEY,
+});
 
 // Start the game (called by host)
 export const startGame = mutation({
@@ -199,8 +208,8 @@ export const transitionPhase = internalMutation({
           phaseEndTime: Date.now() + GAME_CONFIG.GENERATION_PHASE_DURATION,
         });
         
-        // For now, create placeholder images (AI integration in next step)
-        await ctx.scheduler.runAfter(0, internal.game.generatePlaceholderImages, {
+        // Trigger AI image generation
+        await ctx.scheduler.runAfter(0, internal.game.generateAIImages, {
           roundId: args.roundId,
         });
         
@@ -275,28 +284,182 @@ export const transitionPhase = internalMutation({
   },
 });
 
-// Generate placeholder images (will be replaced with AI)
-export const generatePlaceholderImages = internalMutation({
+// Generate AI images using FAL AI
+export const generateAIImages = internalAction({
   args: {
     roundId: v.id("rounds"),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const prompts = await ctx.db
+    // Get round and question
+    const round = await ctx.runQuery(internal.game.getRoundData, { 
+      roundId: args.roundId 
+    });
+    if (!round) return null;
+    
+    // Get all prompts for this round
+    const prompts = await ctx.runQuery(internal.game.getPromptsForRound, { 
+      roundId: args.roundId 
+    });
+    
+    if (prompts.length === 0) {
+      console.log("No prompts to generate images for");
+      return null;
+    }
+    
+    // Generate images in parallel
+    const imageGenerations = prompts.map(async (prompt) => {
+      try {
+        // Combine question and prompt for better context
+        const fullPrompt = `${round.questionText} ${prompt.text}. Style: ${getRandomStyle()}`;
+        
+        console.log(`Generating image for prompt: ${fullPrompt}`);
+        
+        const result = await fal.subscribe("fal-ai/flux/dev", {
+          input: {
+            prompt: fullPrompt,
+            image_size: "landscape_4_3",
+            num_inference_steps: 28,
+            guidance_scale: 3.5,
+            num_images: 1,
+            enable_safety_checker: process.env.FAL_ENABLE_SAFETY_CHECKER === "true",
+          },
+        });
+        
+        const imageUrl = result.images[0].url;
+        if (!imageUrl) throw new Error("No image URL returned");
+        
+        console.log(`Generated image URL: ${imageUrl}`);
+        
+        // Store image URL and metadata
+        await ctx.runMutation(internal.game.storeGeneratedImage, {
+          promptId: prompt._id,
+          imageUrl,
+          metadata: {
+            model: "flux-dev",
+            seed: result.seed,
+            inference_steps: 28,
+          },
+        });
+      } catch (error) {
+        console.error(`Failed to generate image for prompt ${prompt._id}:`, error);
+        
+        // Store error and use fallback
+        await ctx.runMutation(internal.game.storeImageError, {
+          promptId: prompt._id,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    });
+    
+    // Wait for all generations to complete
+    await Promise.all(imageGenerations);
+    console.log(`Completed generating ${prompts.length} images`);
+    
+    return null;
+  },
+});
+
+// Helper function to add variety to generated images
+function getRandomStyle(): string {
+  const styles = [
+    "digital art",
+    "oil painting",
+    "watercolor",
+    "cartoon style",
+    "photorealistic",
+    "concept art",
+    "surreal art",
+    "minimalist",
+    "retro 80s style",
+    "anime style",
+  ];
+  return styles[Math.floor(Math.random() * styles.length)];
+}
+
+// Internal mutations for storing results
+export const storeGeneratedImage = internalMutation({
+  args: {
+    promptId: v.id("prompts"),
+    imageUrl: v.string(),
+    metadata: v.optional(v.object({
+      model: v.string(),
+      seed: v.optional(v.number()),
+      inference_steps: v.optional(v.number()),
+    })),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("generatedImages", {
+      promptId: args.promptId,
+      imageUrl: args.imageUrl,
+      metadata: args.metadata,
+      generatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const storeImageError = internalMutation({
+  args: {
+    promptId: v.id("prompts"),
+    error: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Use a fallback image with error message
+    await ctx.db.insert("generatedImages", {
+      promptId: args.promptId,
+      imageUrl: `/placeholder.svg?text=${encodeURIComponent("Error: " + args.error.substring(0, 20))}`,
+      error: args.error,
+      generatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+// Internal queries for the action
+export const getRoundData = internalQuery({
+  args: { 
+    roundId: v.id("rounds") 
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("rounds"),
+      questionCardId: v.id("questionCards"),
+      questionText: v.string(),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round) return null;
+    
+    const questionCard = await ctx.db.get(round.questionCardId);
+    if (!questionCard) return null;
+    
+    return {
+      _id: round._id,
+      questionCardId: round.questionCardId,
+      questionText: questionCard.text,
+    };
+  },
+});
+
+export const getPromptsForRound = internalQuery({
+  args: { 
+    roundId: v.id("rounds") 
+  },
+  returns: v.array(v.object({
+    _id: v.id("prompts"),
+    text: v.string(),
+    playerId: v.id("players"),
+  })),
+  handler: async (ctx, args) => {
+    return await ctx.db
       .query("prompts")
       .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
       .collect();
-    
-    // Create placeholder image for each prompt
-    for (const prompt of prompts) {
-      await ctx.db.insert("generatedImages", {
-        promptId: prompt._id,
-        imageUrl: `/placeholder.svg?text=${encodeURIComponent(prompt.text.substring(0, 20))}`,
-        generatedAt: Date.now(),
-      });
-    }
-    
-    return null;
   },
 });
 
