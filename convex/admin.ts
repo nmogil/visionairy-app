@@ -61,7 +61,7 @@ export const seedQuestionCardsInternal = internalMutation({
 });
 
 // Shared seeding logic
-async function seedQuestionCardsLogic(ctx: any) {
+async function seedQuestionCardsLogic(ctx: { db: any }) {
   const existingCards = await ctx.db
     .query("questionCards")
     .collect();

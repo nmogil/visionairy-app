@@ -10,6 +10,17 @@ export function useAuth() {
   const isAuthenticated = !!token;
   const isLoading = token === undefined || (isAuthenticated && user === undefined);
   
+  // Only log auth state changes when debugging is needed
+  // console.log("[useAuth] State:", {
+  //   hasToken: !!token,
+  //   isAuthenticated,
+  //   isLoading,
+  //   hasUser: !!user,
+  //   userName: user?.displayName || user?.username,
+  //   isAnonymous: user?.isAnonymous,
+  //   onboardingCompleted: user?.onboardingCompleted
+  // });
+  
   return {
     user,
     signIn,

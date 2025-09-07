@@ -1,0 +1,4864 @@
+Directory structure:
+└── mikecann-decorate-with-convex/
+    ├── README.md
+    ├── components.json
+    ├── convex.json
+    ├── index.html
+    ├── LICENSE
+    ├── package.json
+    ├── postcss.config.cjs
+    ├── setup.mjs
+    ├── tailwind.config.js
+    ├── tsconfig.app.json
+    ├── tsconfig.json
+    ├── tsconfig.node.json
+    ├── vercel.json
+    ├── vite.config.ts
+    ├── convex/
+    │   ├── auth.config.ts
+    │   ├── auth.ts
+    │   ├── http.ts
+    │   ├── images.ts
+    │   ├── router.ts
+    │   ├── schema.ts
+    │   ├── tsconfig.json
+    │   ├── userSettings.ts
+    │   ├── _generated/
+    │   │   ├── api.d.ts
+    │   │   ├── api.js
+    │   │   ├── dataModel.d.ts
+    │   │   ├── server.d.ts
+    │   │   └── server.js
+    │   ├── generate/
+    │   │   ├── generate.ts
+    │   │   ├── google.ts
+    │   │   ├── lib.ts
+    │   │   └── openai.ts
+    │   └── resend/
+    │       └── ResendOTPPasswordReset.ts
+    ├── shared/
+    │   ├── ensure.ts
+    │   ├── filter.ts
+    │   └── misc.ts
+    ├── src/
+    │   ├── App.tsx
+    │   ├── index.css
+    │   ├── main.tsx
+    │   ├── routes.ts
+    │   ├── vite-env.d.ts
+    │   ├── auth/
+    │   │   ├── PasswordReset.tsx
+    │   │   ├── SignInForm.tsx
+    │   │   ├── SignOutButton.tsx
+    │   │   └── UnauthenticatedContent.tsx
+    │   ├── common/
+    │   │   ├── AppHeader.tsx
+    │   │   ├── BottomNav.tsx
+    │   │   ├── Button.tsx
+    │   │   ├── Card.tsx
+    │   │   ├── ConfirmDialog.tsx
+    │   │   ├── ConvexCorner.tsx
+    │   │   ├── error.ts
+    │   │   ├── GitHubCorner.tsx
+    │   │   ├── InputField.tsx
+    │   │   ├── Tabs.tsx
+    │   │   └── utils.ts
+    │   ├── components/
+    │   │   └── imagePage/
+    │   │       └── PromptPanel.tsx
+    │   ├── dashboardPage/
+    │   │   ├── DashboardPage.tsx
+    │   │   ├── ImageCard.tsx
+    │   │   ├── ImageGrid.tsx
+    │   │   └── UploadCard.tsx
+    │   ├── imagePage/
+    │   │   ├── FullscreenModal.tsx
+    │   │   ├── GeneratedImage.tsx
+    │   │   ├── GeneratingImage.tsx
+    │   │   ├── ImageDisplay.tsx
+    │   │   ├── ImagePage.tsx
+    │   │   ├── ImageViewer.tsx
+    │   │   ├── PromptPanel.tsx
+    │   │   ├── RegenerateModal.tsx
+    │   │   ├── UploadedImage.tsx
+    │   │   └── UploadingImage.tsx
+    │   └── settingsPage/
+    │       └── SettingsPage.tsx
+    └── .cursor/
+        └── rules/
+            └── convex_rules.mdc
+
+================================================
+FILE: README.md
+================================================
+![screenshot](./media/screenshot.jpg)
+
+# Decorate with Convex
+
+A real-time image decoration application that allows users to upload images and get AI-generated decorated versions. Built with Convex, React, and TypeScript.
+
+## Features
+
+- Upload images via drag & drop or file selection
+- Mobile camera support for image capture
+- Real-time status updates for image processing
+- User authentication
+- Secure file storage using Convex Storage
+- Responsive design for desktop and mobile
+- Side-by-side image comparison
+
+## Tech Stack
+
+- Convex - Backend, Database, and File Storage
+- React + Vite - Frontend Framework
+- TypeScript - Type Safety
+- TailwindCSS - Styling
+- type-route - Type-safe Routing
+
+## Setup
+
+1. Clone the repository
+
+2. Install dependencies:
+   ```bash
+   bun install
+   ```
+3. Start the dev server which will create the `.env.local` file
+
+   ```bash
+   bun dev
+   ```
+
+4. Set the OpenAI API key:
+
+   ```bash
+   bun convex env set OPEN_API_KEY <your-key>
+   bun convex env set GEMINI_API_KEY <your-key>
+   ```
+
+5. Run the typescript type-cheker in another terminal window
+
+```bash
+bun dev:ts
+```
+
+5. Visit `http://localhost:5173` in your browser
+
+## Development Flow
+
+1. Upload an image through the drop zone or file selector
+2. The image is resized and uploaded to Convex Storage
+3. The system processes the image through several states:
+   - uploading: Initial file upload to Convex Storage
+   - uploaded: File successfully stored
+   - generating: AI decoration in progress
+   - generated: Final decorated image available
+
+## Project Structure
+
+- `/convex` - Backend logic and database schema
+- `/src` - Frontend React application
+- `/public` - Static assets
+- `/shared` - Shared types and utilities
+
+## License
+
+MIT
+
+
+
+================================================
+FILE: components.json
+================================================
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "src/index.css",
+    "baseColor": "slate",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "iconLibrary": "lucide"
+}
+
+
+
+================================================
+FILE: convex.json
+================================================
+{
+  "node": {
+    "externalPackages": [
+      "sharp"
+    ]
+  }
+}
+
+
+
+================================================
+FILE: index.html
+================================================
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/index.css" />
+
+    <title>Decorate with Convex</title>
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <meta property="og:title" content="Decorate with Convex" />
+    <meta property="og:description" content="A real-time image decoration app using AI, built with Convex, React, and TypeScript." />
+    <meta property="og:image" content="/logo.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
+
+
+================================================
+FILE: LICENSE
+================================================
+MIT License
+
+Copyright (c) 2025 Mike Cann
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+================================================
+FILE: package.json
+================================================
+{
+  "name": "decorate-with-convex",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev --once && node setup.mjs && npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "vite --open",
+    "build": "tsc -b && vite build",
+    "dev:backend": "convex dev --tail-logs",
+    "dev:ts": "tsc -b --watch --preserveWatchOutput",
+    "lint": "tsc -p convex -noEmit --pretty false && tsc -p . -noEmit --pretty false && convex dev --once && vite build"
+  },
+  "dependencies": {
+    "@convex-dev/auth": "^0.0.82",
+    "@google/genai": "^1.15.0",
+    "clsx": "^2.1.1",
+    "convex": "^1.23.0",
+    "convex-helpers": "^0.1.87",
+    "formdata-node": "^6.0.3",
+    "jwt-decode": "3.1.2",
+    "lucide-react": "^0.503.0",
+    "openai": "^4.0.0",
+    "oslo": "^1.2.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "resend": "^4.5.1",
+    "sharp": "0.33.5",
+    "sonner": "^2.0.3",
+    "tailwind-merge": "^3.2.0",
+    "ts-pattern": "^5.7.0",
+    "type-route": "^1.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "~10",
+    "dotenv": "^16.4.7",
+    "eslint": "^9.21.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^15.15.0",
+    "npm-run-all": "^4.1.5",
+    "postcss": "~8",
+    "prettier": "^3.5.3",
+    "tailwindcss": "~3",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.24.1",
+    "vite": "^6.3.3"
+  }
+}
+
+
+
+================================================
+FILE: postcss.config.cjs
+================================================
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+};
+
+
+
+================================================
+FILE: setup.mjs
+================================================
+/**
+ * This script runs `npx @convex-dev/auth` to help with setting up
+ * environment variables for Convex Auth.
+ *
+ * You can safely delete it and remove it from package.json scripts.
+ */
+
+import fs from "fs";
+import { config as loadEnvFile } from "dotenv";
+import { spawnSync } from "child_process";
+
+if (!fs.existsSync(".env.local")) {
+  // Something is off, skip the script.
+  process.exit(0);
+}
+
+const config = {};
+loadEnvFile({ path: ".env.local", processEnv: config });
+
+const runOnceWorkflow = process.argv.includes("--once");
+
+if (runOnceWorkflow && config.SETUP_SCRIPT_RAN !== undefined) {
+  // The script has already ran once, skip.
+  process.exit(0);
+}
+
+const result = spawnSync("npx", ["@convex-dev/auth", "--skip-git-check"], {
+  stdio: "inherit",
+});
+
+if (runOnceWorkflow) {
+  fs.writeFileSync(".env.local", `
+SETUP_SCRIPT_RAN=1
+`, { flag: "a" });
+}
+
+
+process.exit(result.status);
+
+
+================================================
+FILE: tailwind.config.js
+================================================
+const {} = require("tailwindcss/defaultTheme");
+
+module.exports = {
+  mode: "jit",
+  purge: ["./index.html", "./src/**/*.{vue,js,ts,jsx,tsx}"],
+  variants: {
+    extend: {},
+  },
+};
+
+
+
+================================================
+FILE: tsconfig.app.json
+================================================
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "ES2021", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+
+    /* Import paths */
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "shared", "convex"]
+}
+
+
+
+================================================
+FILE: tsconfig.json
+================================================
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+
+
+
+================================================
+FILE: tsconfig.node.json
+================================================
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["vite.config.ts"]
+}
+
+
+
+================================================
+FILE: vercel.json
+================================================
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+
+
+
+================================================
+FILE: vite.config.ts
+================================================
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+});
+
+
+
+================================================
+FILE: convex/auth.config.ts
+================================================
+export default {
+  providers: [
+    {
+      domain: process.env.CONVEX_SITE_URL,
+      applicationID: "convex",
+    },
+  ],
+};
+
+
+
+================================================
+FILE: convex/auth.ts
+================================================
+import { convexAuth } from "@convex-dev/auth/server";
+import { Password } from "@convex-dev/auth/providers/Password";
+import { ResendOTPPasswordReset } from "./resend/ResendOTPPasswordReset";
+
+export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
+  providers: [Password({ reset: ResendOTPPasswordReset })],
+});
+
+
+
+================================================
+FILE: convex/http.ts
+================================================
+import { auth } from "./auth";
+import router from "./router";
+
+const http = router;
+
+auth.addHttpRoutes(http);
+
+export default http;
+
+
+
+================================================
+FILE: convex/images.ts
+================================================
+import { v } from "convex/values";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
+import { ensureFP } from "../shared/ensure";
+import { match } from "ts-pattern";
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const uploadUrl = await ctx.storage.generateUploadUrl();
+
+    const imageId = await ctx.db.insert("images", {
+      userId,
+      status: { kind: "uploading" },
+    });
+
+    return { uploadUrl, imageId };
+  },
+});
+
+export const markUploaded = mutation({
+  args: {
+    imageId: v.id("images"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const image = await ctx.db.get(args.imageId);
+    if (!image) throw new Error(`Image with id '${args.imageId}' not found`);
+    if (image.userId !== userId)
+      throw new Error(
+        `Image with id '${args.imageId}' does not belong to the authenticated user`
+      );
+
+    const url = await ctx.storage.getUrl(args.storageId);
+    if (!url) throw new Error("Failed to get URL");
+
+    console.log(
+      `[markUploaded] Marking image ${args.imageId} as uploaded with storageId ${args.storageId}`
+    );
+
+    await ctx.db.patch(args.imageId, {
+      status: { kind: "uploaded", image: { url, storageId: args.storageId } },
+    });
+  },
+});
+
+// Helper function to validate user access to image
+async function validateImageAccess(ctx: any, imageId: any, userId: string) {
+  const image = await ctx.db.get(imageId);
+  if (!image) throw new Error(`Image with id '${imageId}' not found`);
+  if (image.userId !== userId)
+    throw new Error(
+      `Image with id '${imageId}' does not belong to the authenticated user`
+    );
+  return image;
+}
+
+export const startGeneration = mutation({
+  args: {
+    imageId: v.id("images"),
+    prompt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const image = await validateImageAccess(ctx, args.imageId, userId);
+
+    if (image.status.kind !== "uploaded")
+      throw new Error(
+        `Image with id '${args.imageId}' not ready for generation (status: ${image.status.kind})`
+      );
+
+    const imageObj = image.status.image;
+    if (!imageObj)
+      throw new Error(
+        `Image object missing for imageId '${args.imageId}' in startGeneration`
+      );
+
+    await ctx.db.patch(args.imageId, {
+      status: { kind: "generating", image: imageObj, prompt: args.prompt },
+    });
+
+    // Get user settings to determine which model to use
+    const userSettings = await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+
+    const imageModel =
+      userSettings?.imageModel ?? "google/gemini-2.5-flash-image-preview";
+
+    // Schedule the AI generation
+    await ctx.scheduler.runAfter(
+      0,
+      internal.generate.generate.generateDecoratedImage,
+      {
+        imageId: args.imageId,
+        image: imageObj,
+        prompt: args.prompt,
+        model: imageModel,
+      }
+    );
+  },
+});
+
+export const startRegeneration = mutation({
+  args: {
+    imageId: v.id("images"),
+    prompt: v.string(),
+    baseImage: v.union(v.literal("original"), v.literal("decorated")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const image = await validateImageAccess(ctx, args.imageId, userId);
+
+    if (image.status.kind !== "generated")
+      throw new Error(
+        `Image with id '${args.imageId}' must be in generated status for regeneration (current status: ${image.status.kind})`
+      );
+
+    if (!image.status.image || !image.status.decoratedImage)
+      throw new Error(
+        `Missing image data for regeneration on imageId '${args.imageId}'`
+      );
+
+    // Determine which image to use as the base
+    const baseImageObj =
+      args.baseImage === "decorated"
+        ? image.status.decoratedImage
+        : image.status.image;
+
+    // Delete the current decorated image only if we're not using it as the base
+    if (args.baseImage === "original") {
+      await ctx.storage.delete(image.status.decoratedImage.storageId);
+    }
+
+    await ctx.db.patch(args.imageId, {
+      status: {
+        kind: "generating",
+        image: image.status.image,
+        prompt: args.prompt,
+      },
+    });
+
+    // Get user settings to determine which model to use
+    const userSettings = await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+
+    const imageModel =
+      userSettings?.imageModel ?? "google/gemini-2.5-flash-image-preview";
+
+    // Schedule the AI generation
+    await ctx.scheduler.runAfter(
+      0,
+      internal.generate.generate.generateDecoratedImage,
+      {
+        imageId: args.imageId,
+        image: baseImageObj,
+        prompt: args.prompt,
+        model: imageModel,
+        shouldDeletePreviousDecorated: args.baseImage === "decorated",
+      }
+    );
+  },
+});
+
+export const findImage = query({
+  args: {
+    imageId: v.id("images"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.imageId);
+  },
+});
+
+export const getImage = query({
+  args: {
+    imageId: v.id("images"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.imageId).then(ensureFP());
+  },
+});
+
+export const finishGeneration = internalMutation({
+  args: {
+    imageId: v.id("images"),
+    image: v.object({ url: v.string(), storageId: v.id("_storage") }),
+    decoratedImage: v.object({ url: v.string(), storageId: v.id("_storage") }),
+    prompt: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.imageId, {
+      status: {
+        kind: "generated",
+        image: args.image,
+        decoratedImage: args.decoratedImage,
+        prompt: args.prompt,
+      },
+    });
+  },
+});
+
+export const listImages = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    return await ctx.db
+      .query("images")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(20);
+  },
+});
+
+export const deleteImage = mutation({
+  args: {
+    imageId: v.id("images"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    const image = await ctx.db.get(args.imageId);
+    if (!image) throw new Error("Image not found");
+
+    if (image.userId != userId)
+      throw new Error(
+        `Image with id '${args.imageId}' does not belong to the authenticated user`
+      );
+
+    await match(image.status)
+      .with({ kind: "uploading" }, async () => {
+        // No storage to delete
+      })
+      .with({ kind: "uploaded" }, async ({ image }) => {
+        if (!image) return;
+        await ctx.storage.delete(image.storageId);
+      })
+      .with({ kind: "generating" }, async ({ image }) => {
+        if (!image) return;
+        await ctx.storage.delete(image.storageId);
+      })
+      .with({ kind: "generated" }, async ({ image, decoratedImage }) => {
+        if (image) await ctx.storage.delete(image.storageId);
+        if (decoratedImage) await ctx.storage.delete(decoratedImage.storageId);
+      })
+      .exhaustive();
+
+    await ctx.db.delete(args.imageId);
+  },
+});
+
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const user = await ctx.db.get(userId);
+    return user;
+  },
+});
+
+
+
+================================================
+FILE: convex/router.ts
+================================================
+import { httpRouter } from "convex/server";
+
+const http = httpRouter();
+
+export default http;
+
+
+
+================================================
+FILE: convex/schema.ts
+================================================
+import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
+import { v } from "convex/values";
+import { typedV } from "convex-helpers/validators";
+
+// Extracted validator for an image object with url and storageId
+const imageObject = v.object({
+  url: v.string(),
+  storageId: v.id("_storage"),
+});
+
+const schema = defineSchema({
+  ...authTables,
+  images: defineTable({
+    userId: v.id("users"),
+    status: v.union(
+      v.object({
+        kind: v.literal("uploading"),
+      }),
+      v.object({
+        kind: v.literal("uploaded"),
+        image: imageObject,
+      }),
+      v.object({
+        kind: v.literal("generating"),
+        image: imageObject,
+        prompt: v.string(),
+      }),
+      v.object({
+        kind: v.literal("generated"),
+        image: imageObject,
+        decoratedImage: imageObject,
+        prompt: v.string(),
+      })
+    ),
+  }).index("by_user", ["userId"]),
+  userSettings: defineTable({
+    userId: v.id("users"),
+    imageModel: v.union(
+      v.literal("openai/gpt-image-1"),
+      v.literal("google/gemini-2.5-flash-image-preview")
+    ),
+  }).index("by_user", ["userId"]),
+});
+
+export const vv = typedV(schema);
+
+export default schema;
+
+
+
+================================================
+FILE: convex/tsconfig.json
+================================================
+{
+  /* This TypeScript project config describes the environment that
+   * Convex functions run in and is used to typecheck them.
+   * You can modify it, but some settings required to use Convex.
+   */
+  "compilerOptions": {
+    /* These settings are not required by Convex and can be modified. */
+    "allowJs": true,
+    "strict": true,
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* These compiler options are required by Convex */
+    "target": "ESNext",
+    "lib": ["ES2021", "dom"],
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "isolatedModules": true,
+    "noEmit": true
+  },
+  "include": ["./**/*"],
+  "exclude": ["./_generated"]
+}
+
+
+
+================================================
+FILE: convex/userSettings.ts
+================================================
+import { v } from "convex/values";
+import { query, mutation } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+// Default user settings
+const DEFAULT_SETTINGS = {
+  imageModel: "google/gemini-2.5-flash-image-preview" as const,
+};
+
+export const getUserSettings = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Try to find existing user settings
+    const existingSettings = await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+
+    // If no settings exist, return defaults
+    if (!existingSettings) {
+      return DEFAULT_SETTINGS;
+    }
+
+    // Return existing settings
+    return {
+      imageModel: existingSettings.imageModel,
+    };
+  },
+});
+
+export const updateUserSettings = mutation({
+  args: {
+    imageModel: v.optional(
+      v.union(
+        v.literal("openai/gpt-image-1"),
+        v.literal("google/gemini-2.5-flash-image-preview")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
+
+    // Try to find existing user settings
+    const existingSettings = await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+
+    if (existingSettings) {
+      // Update existing settings
+      const updates: Partial<typeof existingSettings> = {};
+      if (args.imageModel !== undefined) {
+        updates.imageModel = args.imageModel;
+      }
+
+      await ctx.db.patch(existingSettings._id, updates);
+    } else {
+      // Create new settings with provided values or defaults
+      await ctx.db.insert("userSettings", {
+        userId,
+        imageModel: args.imageModel ?? DEFAULT_SETTINGS.imageModel,
+      });
+    }
+  },
+});
+
+
+
+================================================
+FILE: convex/_generated/api.d.ts
+================================================
+/* eslint-disable */
+/**
+ * Generated `api` utility.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
+import type * as auth from "../auth.js";
+import type * as generate_generate from "../generate/generate.js";
+import type * as generate_google from "../generate/google.js";
+import type * as generate_lib from "../generate/lib.js";
+import type * as generate_openai from "../generate/openai.js";
+import type * as http from "../http.js";
+import type * as images from "../images.js";
+import type * as resend_ResendOTPPasswordReset from "../resend/ResendOTPPasswordReset.js";
+import type * as router from "../router.js";
+import type * as userSettings from "../userSettings.js";
+
+/**
+ * A utility for referencing Convex functions in your app's API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
+declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
+  "generate/generate": typeof generate_generate;
+  "generate/google": typeof generate_google;
+  "generate/lib": typeof generate_lib;
+  "generate/openai": typeof generate_openai;
+  http: typeof http;
+  images: typeof images;
+  "resend/ResendOTPPasswordReset": typeof resend_ResendOTPPasswordReset;
+  router: typeof router;
+  userSettings: typeof userSettings;
+}>;
+export declare const api: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "public">
+>;
+export declare const internal: FilterApi<
+  typeof fullApi,
+  FunctionReference<any, "internal">
+>;
+
+
+
+================================================
+FILE: convex/_generated/api.js
+================================================
+/* eslint-disable */
+/**
+ * Generated `api` utility.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import { anyApi } from "convex/server";
+
+/**
+ * A utility for referencing Convex functions in your app's API.
+ *
+ * Usage:
+ * ```js
+ * const myFunctionReference = api.myModule.myFunction;
+ * ```
+ */
+export const api = anyApi;
+export const internal = anyApi;
+
+
+
+================================================
+FILE: convex/_generated/dataModel.d.ts
+================================================
+/* eslint-disable */
+/**
+ * Generated data model types.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import type {
+  DataModelFromSchemaDefinition,
+  DocumentByName,
+  TableNamesInDataModel,
+  SystemTableNames,
+} from "convex/server";
+import type { GenericId } from "convex/values";
+import schema from "../schema.js";
+
+/**
+ * The names of all of your Convex tables.
+ */
+export type TableNames = TableNamesInDataModel<DataModel>;
+
+/**
+ * The type of a document stored in Convex.
+ *
+ * @typeParam TableName - A string literal type of the table name (like "users").
+ */
+export type Doc<TableName extends TableNames> = DocumentByName<
+  DataModel,
+  TableName
+>;
+
+/**
+ * An identifier for a document in Convex.
+ *
+ * Convex documents are uniquely identified by their `Id`, which is accessible
+ * on the `_id` field. To learn more, see [Document IDs](https://docs.convex.dev/using/document-ids).
+ *
+ * Documents can be loaded using `db.get(id)` in query and mutation functions.
+ *
+ * IDs are just strings at runtime, but this type can be used to distinguish them from other
+ * strings when type checking.
+ *
+ * @typeParam TableName - A string literal type of the table name (like "users").
+ */
+export type Id<TableName extends TableNames | SystemTableNames> =
+  GenericId<TableName>;
+
+/**
+ * A type describing your Convex data model.
+ *
+ * This type includes information about what tables you have, the type of
+ * documents stored in those tables, and the indexes defined on them.
+ *
+ * This type is used to parameterize methods like `queryGeneric` and
+ * `mutationGeneric` to make them type-safe.
+ */
+export type DataModel = DataModelFromSchemaDefinition<typeof schema>;
+
+
+
+================================================
+FILE: convex/_generated/server.d.ts
+================================================
+/* eslint-disable */
+/**
+ * Generated utilities for implementing server-side Convex query and mutation functions.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import {
+  ActionBuilder,
+  HttpActionBuilder,
+  MutationBuilder,
+  QueryBuilder,
+  GenericActionCtx,
+  GenericMutationCtx,
+  GenericQueryCtx,
+  GenericDatabaseReader,
+  GenericDatabaseWriter,
+} from "convex/server";
+import type { DataModel } from "./dataModel.js";
+
+/**
+ * Define a query in this Convex app's public API.
+ *
+ * This function will be allowed to read your Convex database and will be accessible from the client.
+ *
+ * @param func - The query function. It receives a {@link QueryCtx} as its first argument.
+ * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
+ */
+export declare const query: QueryBuilder<DataModel, "public">;
+
+/**
+ * Define a query that is only accessible from other Convex functions (but not from the client).
+ *
+ * This function will be allowed to read from your Convex database. It will not be accessible from the client.
+ *
+ * @param func - The query function. It receives a {@link QueryCtx} as its first argument.
+ * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
+ */
+export declare const internalQuery: QueryBuilder<DataModel, "internal">;
+
+/**
+ * Define a mutation in this Convex app's public API.
+ *
+ * This function will be allowed to modify your Convex database and will be accessible from the client.
+ *
+ * @param func - The mutation function. It receives a {@link MutationCtx} as its first argument.
+ * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
+ */
+export declare const mutation: MutationBuilder<DataModel, "public">;
+
+/**
+ * Define a mutation that is only accessible from other Convex functions (but not from the client).
+ *
+ * This function will be allowed to modify your Convex database. It will not be accessible from the client.
+ *
+ * @param func - The mutation function. It receives a {@link MutationCtx} as its first argument.
+ * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
+ */
+export declare const internalMutation: MutationBuilder<DataModel, "internal">;
+
+/**
+ * Define an action in this Convex app's public API.
+ *
+ * An action is a function which can execute any JavaScript code, including non-deterministic
+ * code and code with side-effects, like calling third-party services.
+ * They can be run in Convex's JavaScript environment or in Node.js using the "use node" directive.
+ * They can interact with the database indirectly by calling queries and mutations using the {@link ActionCtx}.
+ *
+ * @param func - The action. It receives an {@link ActionCtx} as its first argument.
+ * @returns The wrapped action. Include this as an `export` to name it and make it accessible.
+ */
+export declare const action: ActionBuilder<DataModel, "public">;
+
+/**
+ * Define an action that is only accessible from other Convex functions (but not from the client).
+ *
+ * @param func - The function. It receives an {@link ActionCtx} as its first argument.
+ * @returns The wrapped function. Include this as an `export` to name it and make it accessible.
+ */
+export declare const internalAction: ActionBuilder<DataModel, "internal">;
+
+/**
+ * Define an HTTP action.
+ *
+ * This function will be used to respond to HTTP requests received by a Convex
+ * deployment if the requests matches the path and method where this action
+ * is routed. Be sure to route your action in `convex/http.js`.
+ *
+ * @param func - The function. It receives an {@link ActionCtx} as its first argument.
+ * @returns The wrapped function. Import this function from `convex/http.js` and route it to hook it up.
+ */
+export declare const httpAction: HttpActionBuilder;
+
+/**
+ * A set of services for use within Convex query functions.
+ *
+ * The query context is passed as the first argument to any Convex query
+ * function run on the server.
+ *
+ * This differs from the {@link MutationCtx} because all of the services are
+ * read-only.
+ */
+export type QueryCtx = GenericQueryCtx<DataModel>;
+
+/**
+ * A set of services for use within Convex mutation functions.
+ *
+ * The mutation context is passed as the first argument to any Convex mutation
+ * function run on the server.
+ */
+export type MutationCtx = GenericMutationCtx<DataModel>;
+
+/**
+ * A set of services for use within Convex action functions.
+ *
+ * The action context is passed as the first argument to any Convex action
+ * function run on the server.
+ */
+export type ActionCtx = GenericActionCtx<DataModel>;
+
+/**
+ * An interface to read from the database within Convex query functions.
+ *
+ * The two entry points are {@link DatabaseReader.get}, which fetches a single
+ * document by its {@link Id}, or {@link DatabaseReader.query}, which starts
+ * building a query.
+ */
+export type DatabaseReader = GenericDatabaseReader<DataModel>;
+
+/**
+ * An interface to read from and write to the database within Convex mutation
+ * functions.
+ *
+ * Convex guarantees that all writes within a single mutation are
+ * executed atomically, so you never have to worry about partial writes leaving
+ * your data in an inconsistent state. See [the Convex Guide](https://docs.convex.dev/understanding/convex-fundamentals/functions#atomicity-and-optimistic-concurrency-control)
+ * for the guarantees Convex provides your functions.
+ */
+export type DatabaseWriter = GenericDatabaseWriter<DataModel>;
+
+
+
+================================================
+FILE: convex/_generated/server.js
+================================================
+/* eslint-disable */
+/**
+ * Generated utilities for implementing server-side Convex query and mutation functions.
+ *
+ * THIS CODE IS AUTOMATICALLY GENERATED.
+ *
+ * To regenerate, run `npx convex dev`.
+ * @module
+ */
+
+import {
+  actionGeneric,
+  httpActionGeneric,
+  queryGeneric,
+  mutationGeneric,
+  internalActionGeneric,
+  internalMutationGeneric,
+  internalQueryGeneric,
+} from "convex/server";
+
+/**
+ * Define a query in this Convex app's public API.
+ *
+ * This function will be allowed to read your Convex database and will be accessible from the client.
+ *
+ * @param func - The query function. It receives a {@link QueryCtx} as its first argument.
+ * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
+ */
+export const query = queryGeneric;
+
+/**
+ * Define a query that is only accessible from other Convex functions (but not from the client).
+ *
+ * This function will be allowed to read from your Convex database. It will not be accessible from the client.
+ *
+ * @param func - The query function. It receives a {@link QueryCtx} as its first argument.
+ * @returns The wrapped query. Include this as an `export` to name it and make it accessible.
+ */
+export const internalQuery = internalQueryGeneric;
+
+/**
+ * Define a mutation in this Convex app's public API.
+ *
+ * This function will be allowed to modify your Convex database and will be accessible from the client.
+ *
+ * @param func - The mutation function. It receives a {@link MutationCtx} as its first argument.
+ * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
+ */
+export const mutation = mutationGeneric;
+
+/**
+ * Define a mutation that is only accessible from other Convex functions (but not from the client).
+ *
+ * This function will be allowed to modify your Convex database. It will not be accessible from the client.
+ *
+ * @param func - The mutation function. It receives a {@link MutationCtx} as its first argument.
+ * @returns The wrapped mutation. Include this as an `export` to name it and make it accessible.
+ */
+export const internalMutation = internalMutationGeneric;
+
+/**
+ * Define an action in this Convex app's public API.
+ *
+ * An action is a function which can execute any JavaScript code, including non-deterministic
+ * code and code with side-effects, like calling third-party services.
+ * They can be run in Convex's JavaScript environment or in Node.js using the "use node" directive.
+ * They can interact with the database indirectly by calling queries and mutations using the {@link ActionCtx}.
+ *
+ * @param func - The action. It receives an {@link ActionCtx} as its first argument.
+ * @returns The wrapped action. Include this as an `export` to name it and make it accessible.
+ */
+export const action = actionGeneric;
+
+/**
+ * Define an action that is only accessible from other Convex functions (but not from the client).
+ *
+ * @param func - The function. It receives an {@link ActionCtx} as its first argument.
+ * @returns The wrapped function. Include this as an `export` to name it and make it accessible.
+ */
+export const internalAction = internalActionGeneric;
+
+/**
+ * Define a Convex HTTP action.
+ *
+ * @param func - The function. It receives an {@link ActionCtx} as its first argument, and a `Request` object
+ * as its second.
+ * @returns The wrapped endpoint function. Route a URL path to this function in `convex/http.js`.
+ */
+export const httpAction = httpActionGeneric;
+
+
+
+================================================
+FILE: convex/generate/generate.ts
+================================================
+"use node";
+import { internalAction } from "../_generated/server";
+import { v } from "convex/values";
+import { api, internal } from "../_generated/api";
+import { Id } from "../_generated/dataModel";
+import { generateWithOpenAI } from "./openai";
+import { generateWithGoogle } from "./google";
+
+export const generateDecoratedImage = internalAction({
+  args: {
+    imageId: v.id("images"),
+    image: v.object({ url: v.string(), storageId: v.id("_storage") }),
+    prompt: v.string(),
+    model: v.union(
+      v.literal("openai/gpt-image-1"),
+      v.literal("google/gemini-2.5-flash-image-preview")
+    ),
+    shouldDeletePreviousDecorated: v.optional(v.boolean()),
+  },
+  handler: async (
+    ctx,
+    { imageId, image, prompt, model, shouldDeletePreviousDecorated = false }
+  ) => {
+    console.log(`[generateDecoratedImage] Starting for image`, {
+      imageId,
+      image,
+      prompt,
+      model,
+    });
+
+    // Generate the decorated image using the specified model
+    let decoratedImageData: { url: string; storageId: Id<"_storage"> };
+
+    if (model === "openai/gpt-image-1")
+      decoratedImageData = await generateWithOpenAI(ctx, image, prompt);
+    else if (model === "google/gemini-2.5-flash-image-preview")
+      decoratedImageData = await generateWithGoogle(ctx, image, prompt);
+    else throw new Error(`Unsupported model: ${model}`);
+
+    try {
+      // Get the current image record to ensure we have the original image reference
+      const currentImage = await ctx.runQuery(api.images.getImage, { imageId });
+      if (!currentImage) {
+        throw new Error(`Could not find image for imageId '${imageId}'`);
+      }
+
+      // Ensure we have the original image reference
+      let originalImage;
+      if (
+        currentImage.status.kind === "uploaded" ||
+        currentImage.status.kind === "generating" ||
+        currentImage.status.kind === "generated"
+      ) {
+        originalImage = currentImage.status.image;
+      }
+
+      if (!originalImage) {
+        throw new Error(
+          `Could not find original image for imageId '${imageId}' - status: ${currentImage.status.kind}`
+        );
+      }
+
+      await ctx.runMutation(internal.images.finishGeneration, {
+        imageId,
+        image: originalImage, // Always use the original image reference
+        decoratedImage: decoratedImageData,
+        prompt,
+      });
+
+      // If we used the decorated image as base, delete it now that we have a new one
+      if (shouldDeletePreviousDecorated && image.storageId) {
+        await ctx.storage.delete(image.storageId);
+      }
+    } catch (e) {
+      console.error(e);
+      await ctx.storage.delete(decoratedImageData.storageId);
+    }
+
+    console.log(`[generateDecoratedImage] Done for imageId: ${imageId}`);
+  },
+});
+
+
+
+================================================
+FILE: convex/generate/google.ts
+================================================
+"use node";
+import { Id } from "../_generated/dataModel";
+import { GoogleGenAI } from "@google/genai";
+import { resizeAndConvertToWebp } from "./lib";
+
+/**
+ * Generate decorated image using Google's Gemini 2.5 Flash model
+ *
+ * NOTE: Google Gemini Flash does not support image generation/editing.
+ * This function provides alternative approaches:
+ * 1. Use Gemini to enhance the prompt, then fall back to OpenAI
+ * 2. Throw informative error about the limitation
+ */
+export async function generateWithGoogle(
+  ctx: any,
+  image: { url: string; storageId: string },
+  prompt: string
+): Promise<{ url: string; storageId: Id<"_storage"> }> {
+  console.log(
+    `[generateWithGoogle] Using Gemini 2.5 Flash Image Preview with prompt: ${prompt}`
+  );
+
+  const apiKey =
+    process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENAI_API_KEY ?? null;
+  if (!apiKey)
+    throw new Error(
+      "GEMINI_API_KEY or GOOGLE_GENAI_API_KEY is not set. Please configure your Convex env."
+    );
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Load the source image and encode as base64 for inlineData
+  const response = await fetch(image.url);
+  if (!response.ok)
+    throw new Error(
+      `Failed to fetch uploaded image from storage: ${response.statusText}`
+    );
+  const mimeType = response.headers.get("content-type") || "image/png";
+  const arrayBuffer = await response.arrayBuffer();
+  const base64Image = Buffer.from(arrayBuffer).toString("base64");
+
+  // Follow the official SDK example: text + inlineData parts
+  const contents = [
+    { text: prompt },
+    {
+      inlineData: {
+        mimeType,
+        data: base64Image,
+      },
+    },
+  ];
+
+  const genResponse = await ai.models.generateContent({
+    model: "gemini-2.5-flash-image-preview",
+    contents,
+  });
+
+  // Log usage metadata if available and an estimated cost based on public pricing
+  const usage = genResponse.usageMetadata;
+  if (usage) {
+    const { promptTokenCount, candidatesTokenCount, totalTokenCount } = usage;
+    console.log(
+      `[generateWithGoogle] Usage (reported): prompt_tokens=${promptTokenCount}, candidates_tokens=${candidatesTokenCount}, total_tokens=${totalTokenCount}`
+    );
+
+    // Pricing: $0.30 per 1M input tokens, $30.00 per 1M output tokens
+    // Source: https://developers.googleblog.com/en/introducing-gemini-2-5-flash-image/
+    const INPUT_COST_PER_TOKEN = 0.3 / 1_000_000;
+    const OUTPUT_COST_PER_TOKEN = 30.0 / 1_000_000;
+
+    const inputCost = (promptTokenCount ?? 0) * INPUT_COST_PER_TOKEN;
+    const outputCost = (candidatesTokenCount ?? 0) * OUTPUT_COST_PER_TOKEN;
+    const totalCost = inputCost + outputCost;
+
+    console.log(
+      `[generateWithGoogle] Estimated cost breakdown: input=$${inputCost.toFixed(6)}, output=$${outputCost.toFixed(6)}, total=$${totalCost.toFixed(6)}`
+    );
+  }
+
+  const candidates = genResponse.candidates ?? [];
+  if (candidates.length === 0) throw new Error("Gemini returned no candidates");
+
+  // Find first inlineData part with image data
+  let b64Out: string | null = null;
+  const parts: Array<any> = candidates[0].content?.parts ?? [];
+  for (const part of parts) {
+    const inline = part.inlineData as { data?: string } | undefined;
+    if (inline?.data) {
+      b64Out = inline.data;
+      break;
+    }
+  }
+  if (!b64Out) throw new Error("Gemini response did not include image data");
+
+  // Convert to webp and store in Convex storage
+  const outBytes = Buffer.from(b64Out, "base64");
+  let webpBuffer: Buffer;
+  try {
+    webpBuffer = await resizeAndConvertToWebp(outBytes);
+  } catch (err) {
+    throw new Error(`Failed to resize/convert Gemini output to webp: ${err}`);
+  }
+  const webpBlob = new Blob([webpBuffer], { type: "image/webp" });
+  const storageId = await ctx.storage.store(webpBlob);
+  const url = await ctx.storage.getUrl(storageId);
+  if (!url) throw new Error("Failed to get storage URL after Gemini upload");
+
+  return { url, storageId };
+}
+
+
+
+================================================
+FILE: convex/generate/lib.ts
+================================================
+"use node";
+import sharp from "sharp";
+
+/**
+ * Resize and convert an image buffer to webp format, max 2048x2048.
+ * @param inputBuffer - The input image buffer (PNG, JPEG, etc)
+ * @returns Promise<Buffer> - The processed webp image buffer
+ */
+export async function resizeAndConvertToWebp(
+  inputBuffer: Buffer
+): Promise<Buffer> {
+  return sharp(inputBuffer)
+    .resize(2048, 2048, { fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 92 })
+    .toBuffer();
+}
+
+/**
+ * Convert base64 string to Uint8Array
+ * @param base64 - Base64 encoded string
+ * @returns Uint8Array - The decoded bytes
+ */
+export function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = globalThis.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+  return bytes;
+}
+
+
+
+================================================
+FILE: convex/generate/openai.ts
+================================================
+"use node";
+import { Id } from "../_generated/dataModel";
+import OpenAI from "openai";
+import { File } from "formdata-node";
+import { resizeAndConvertToWebp, base64ToUint8Array } from "./lib";
+
+if (!process.env.OPENAI_API_KEY)
+  throw new Error(
+    `OPENAI_API_KEY is not set, please 'bun convex env set OPEN_API_KEY <your-key>'`
+  );
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+/**
+ * Generate decorated image using OpenAI's GPT Image 1 model
+ */
+export async function generateWithOpenAI(
+  ctx: any,
+  image: { url: string; storageId: string },
+  prompt: string
+): Promise<{ url: string; storageId: Id<"_storage"> }> {
+  console.log(
+    `[generateWithOpenAI] Calling OpenAI image edit endpoint with prompt: ${prompt}`
+  );
+
+  const response = await fetch(image.url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch uploaded image from storage: ${response.statusText}`
+    );
+  }
+
+  // Convert response to a File object for OpenAI
+  const buffer = await response.arrayBuffer();
+  const file = new File([buffer], "image.png", {
+    type: response.headers.get("content-type") || "image/png",
+  });
+
+  // Call OpenAI image edit endpoint
+  const editResponse = await openai.images.edit({
+    image: file,
+    model: "gpt-image-1",
+    prompt,
+    n: 1,
+    quality: "medium",
+  });
+
+  // Log usage and compute detailed token-based cost per OpenAI pricing
+  // Ref: https://platform.openai.com/docs/pricing#image-tokens
+  if (editResponse.usage) {
+    const { input_tokens, output_tokens, input_tokens_details } =
+      editResponse.usage as any;
+    const textTokens: number = input_tokens_details?.text_tokens ?? 0;
+    const imageInputTokens: number = input_tokens_details?.image_tokens ?? 0;
+    const imageOutputTokens: number = output_tokens ?? 0;
+
+    // Prices per token
+    const COST_PER_TEXT_TOKEN = 5 / 1_000_000; // $5 per 1M tokens
+    const COST_PER_IMAGE_INPUT_TOKEN = 10 / 1_000_000; // $10 per 1M tokens
+    const COST_PER_IMAGE_OUTPUT_TOKEN = 40 / 1_000_000; // $40 per 1M tokens
+
+    const textInputCost = textTokens * COST_PER_TEXT_TOKEN;
+    const imageInputCost = imageInputTokens * COST_PER_IMAGE_INPUT_TOKEN;
+    const imageOutputCost = imageOutputTokens * COST_PER_IMAGE_OUTPUT_TOKEN;
+    const totalCost = textInputCost + imageInputCost + imageOutputCost;
+
+    console.log(
+      `[generateWithOpenAI] Usage (reported): text_input_tokens=${textTokens}, image_input_tokens=${imageInputTokens}, image_output_tokens=${imageOutputTokens}, total_input_tokens=${input_tokens}`
+    );
+    console.log(
+      `[generateWithOpenAI] Estimated cost breakdown: text_input=$${textInputCost.toFixed(6)}, image_input=$${imageInputCost.toFixed(6)}, image_output=$${imageOutputCost.toFixed(6)}, total=$${totalCost.toFixed(6)}`
+    );
+  } else {
+    console.warn(
+      "[generateWithOpenAI] No usage info returned; cannot compute token-based cost."
+    );
+  }
+
+  if (!editResponse.data || !editResponse.data[0].b64_json) {
+    throw new Error("No image data returned from OpenAI image edit endpoint");
+  }
+
+  // Store the generated image in Convex storage
+  console.log(`[generateWithOpenAI] Storing generated image in Convex storage`);
+  const bytes = base64ToUint8Array(editResponse.data[0].b64_json);
+
+  // Resize and convert to webp using helper
+  let webpBuffer: Buffer;
+  try {
+    webpBuffer = await resizeAndConvertToWebp(Buffer.from(bytes));
+  } catch (err) {
+    throw new Error(`Failed to resize/convert image to webp: ${err}`);
+  }
+  const webpBlob = new Blob([webpBuffer], { type: "image/webp" });
+  const storageId = await ctx.storage.store(webpBlob);
+  const url = await ctx.storage.getUrl(storageId);
+  if (!url) throw new Error("Failed to get storage URL after upload");
+
+  return { url, storageId };
+}
+
+
+
+================================================
+FILE: convex/resend/ResendOTPPasswordReset.ts
+================================================
+import Resend from "@auth/core/providers/resend";
+import { Resend as ResendAPI } from "resend";
+import { alphabet, generateRandomString } from "oslo/crypto";
+
+export const ResendOTPPasswordReset = Resend({
+  id: "resend-otp",
+  apiKey: process.env.RESEND_API_TOKEN,
+  async generateVerificationToken() {
+    return generateRandomString(8, alphabet("0-9"));
+  },
+  async sendVerificationRequest({ identifier: email, provider, token }) {
+    const resend = new ResendAPI(provider.apiKey);
+
+    const { error } = await resend.emails.send({
+      from: "Decorate with Convex <decorate-with-convex@mikecann.blog>",
+      to: [email],
+      subject: `Reset your password in Decorate with Convex`,
+      text: "Your password reset code is " + token,
+    });
+
+    if (error) throw new Error(`Sending email failed: ${error}`);
+  },
+});
+
+
+
+================================================
+FILE: shared/ensure.ts
+================================================
+import { isKinds } from "./filter";
+
+const getErrMsg = (err: string | (() => string)) => (typeof err === "string" ? err : err());
+
+export const ensureNotUndefined = <T>(
+  obj: T | undefined,
+  err: string | (() => string) = `variable was undefined when it shouldnt have been.`,
+): T => {
+  if (obj === undefined) throw new Error(getErrMsg(err));
+  return obj;
+};
+
+export const ensureNotNull = <T>(
+  obj: T | null,
+  err: string | (() => string) = `variable was null when it shouldnt have been.`,
+): T => {
+  if (obj === null) throw new Error(getErrMsg(err));
+  return obj;
+};
+
+export const ensure = <T>(
+  obj: Nullable<T>,
+  err: string | (() => string) = `variable was undefined or null when it shouldnt have been.`,
+): T => {
+  obj = ensureNotUndefined(obj, err);
+  obj = ensureNotNull(obj, err);
+  return obj;
+};
+
+export const createEnsurer =
+  <TVal, TArgs>(
+    fn: (...args: TArgs[]) => TVal | undefined | null,
+    err = `variable was undefined or null when it shouldnt have been.`,
+  ) =>
+  (...args: TArgs[]) =>
+    ensure(fn(...args), err);
+
+export const ensureFP =
+  (err = `variable was undefined or null when it shouldnt have been.`) =>
+  <T>(obj: Nullable<T>): T => {
+    obj = ensureNotUndefined(obj, err);
+    obj = ensureNotNull(obj, err);
+    return obj;
+  };
+
+export const ensureNotUndefinedFP =
+  (err = `variable was undefined when it shouldnt have been.`) =>
+  <T>(obj: T | undefined): T => {
+    if (obj === undefined) throw new Error(err);
+    return obj;
+  };
+
+export const ensureKind = <
+  TKindable extends {
+    kind: string;
+  },
+  TKind extends TKindable["kind"],
+>(
+  kind: TKind,
+  val: TKindable,
+): Extract<TKindable, { kind: TKind }> => {
+  if (!isKinds(kind)(val)) throw new Error(`Expected ${kind} but got ${val.kind}`);
+  return val as any;
+};
+
+export type Nullable<T> = T | undefined | null;
+
+
+
+================================================
+FILE: shared/filter.ts
+================================================
+export const isNotNullOrUndefined = <T>(item: T | null | undefined): item is T => {
+  if (item === null) return false;
+  if (item === undefined) return false;
+  return true;
+};
+
+export const isNotFalsey = <T>(item: T | null | undefined): item is T => {
+  return Boolean(item);
+};
+
+export const isFalse = (item: boolean): item is false => item == false;
+
+export const isTrue = (item: boolean): item is true => item == true;
+
+export const isKinds =
+  <
+    TKindable extends {
+      kind: string;
+    },
+    TKind extends TKindable["kind"],
+  >(
+    ...kinds: TKind[]
+  ) =>
+  (item: TKindable): item is Extract<TKindable, { kind: TKind }> =>
+    kinds.includes(item.kind as any);
+
+export const isKind =
+  <
+    TKindable extends {
+      kind: string;
+    },
+    TKind extends TKindable["kind"],
+  >(
+    kind: TKind,
+  ) =>
+  (item: TKindable): item is Extract<TKindable, { kind: TKind }> =>
+    kind == item.kind;
+
+
+
+================================================
+FILE: shared/misc.ts
+================================================
+export function pick<T, K extends keyof T>(obj: T, ...keys: K[]): Pick<T, K> {
+  const ret: any = {};
+  keys.forEach((key) => {
+    ret[key] = obj[key];
+  });
+  return ret;
+}
+
+export function exhaustiveCheck(param: never): never {
+  throw new Error(`Exhaustive check failed: ${param}`);
+}
+
+export function wait(ms: number) {
+  return new Promise((resolve, reject) => setTimeout(resolve, ms));
+}
+
+export const iife = <T>(fn: () => T): T => fn();
+
+
+
+================================================
+FILE: src/App.tsx
+================================================
+import { Authenticated, Unauthenticated } from "convex/react";
+import { Toaster } from "sonner";
+import { useRoute } from "./routes";
+import DashboardPage from "./dashboardPage/DashboardPage";
+import { Id } from "../convex/_generated/dataModel";
+import ImagePage from "./imagePage/ImagePage";
+import SettingsPage from "./settingsPage/SettingsPage";
+import { BottomNav } from "./common/BottomNav";
+import { UnauthenticatedContent } from "@/auth/UnauthenticatedContent";
+import { AppHeader } from "./common/AppHeader";
+
+export default function App() {
+  const route = useRoute();
+  return (
+    <div className="h-full-vh flex flex-col bg-[var(--color-bg)]">
+      <main className="flex-1 flex flex-col">
+        <Authenticated>
+          <AppHeader />
+          {route.name === "dashboard" && <DashboardPage />}
+          {route.name === "image" && (
+            <ImagePage imageId={route.params.imageId as Id<"images">} />
+          )}
+          {route.name === "settings" && <SettingsPage />}
+          <BottomNav />
+        </Authenticated>
+        <Unauthenticated>
+          <UnauthenticatedContent />
+        </Unauthenticated>
+      </main>
+      <Toaster />
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/index.css
+================================================
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #f7f8fa;
+  --color-card: #fff;
+  --color-accent: #4fc3f7;
+  --color-accent-dark: #0288d1;
+  --color-danger: #f87171;
+  --color-border: #e5e7eb;
+  --color-text: #22223b;
+  --color-text-secondary: #6b7280;
+}
+
+body {
+  font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";
+  color: var(--color-text);
+  background: var(--color-bg);
+  min-height: calc(var(--vh, 1vh) * 100);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.h-full-vh {
+  height: calc(var(--vh, 1vh) * 100);
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-lg p-6;
+}
+
+.accent-text {
+  color: var(--color-accent);
+}
+
+.button {
+  @apply bg-gradient-to-r from-blue-400 to-blue-500 text-white font-semibold rounded-lg shadow hover:from-blue-500 hover:to-blue-600 transition;
+}
+
+.input-field {
+  @apply w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-base shadow-sm transition;
+  background: #f9fafb;
+}
+
+.auth-button {
+  @apply w-full py-2 rounded-lg text-white font-semibold button hover:opacity-90 transition-opacity;
+}
+
+.link-text {
+  @apply text-blue-500 hover:underline cursor-pointer font-medium;
+}
+
+.fade-in {
+  @apply transition-opacity duration-300 ease-in;
+  opacity: 1;
+}
+
+.fade-out {
+  @apply transition-opacity duration-300 ease-out;
+  opacity: 0;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #e0e7ef;
+  border-radius: 8px;
+}
+
+
+
+================================================
+FILE: src/main.tsx
+================================================
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { ConvexReactClient } from "convex/react";
+import "./index.css";
+import App from "./App";
+import { RouteProvider } from "./routes";
+import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
+
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+
+// Set --vh to 1% of the viewport height for mobile-safe full height
+function setVh() {
+  document.documentElement.style.setProperty(
+    "--vh",
+    `${window.innerHeight * 0.01}px`
+  );
+}
+window.addEventListener("resize", setVh);
+setVh();
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <ConvexAuthProvider client={convex}>
+      <RouteProvider>
+        <ConvexQueryCacheProvider>
+          <App />
+        </ConvexQueryCacheProvider>
+      </RouteProvider>
+    </ConvexAuthProvider>
+  </StrictMode>
+);
+
+
+
+================================================
+FILE: src/routes.ts
+================================================
+import { createRouter, defineRoute, param } from "type-route";
+
+export const { RouteProvider, useRoute, routes } = createRouter({
+  dashboard: defineRoute("/"),
+  image: defineRoute(
+    { imageId: param.path.string },
+    (p) => `/image/${p.imageId}`
+  ),
+  settings: defineRoute("/settings"),
+});
+
+
+
+================================================
+FILE: src/vite-env.d.ts
+================================================
+/// <reference types="vite/client" />
+
+
+
+================================================
+FILE: src/auth/PasswordReset.tsx
+================================================
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useState } from "react";
+import { Button } from "../common/Button";
+import { InputField } from "../common/InputField";
+import { toast } from "sonner";
+
+export function PasswordReset({
+  onBackToSignIn,
+}: {
+  onBackToSignIn?: () => void;
+}) {
+  const { signIn } = useAuthActions();
+  const [step, setStep] = useState<"forgot" | { email: string }>("forgot");
+  return step === "forgot" ? (
+    <form
+      key={"forgot"}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        const email = (formData.get("email") as string).toLowerCase();
+        formData.set("email", email);
+        signIn("password", formData)
+          .then(() => {
+            toast.success("Check your email for a verification code.");
+            setStep({ email });
+          })
+          .catch((error) => {
+            console.error(error);
+            const errorMessage = error.message || `${error}`;
+            toast.error(`Failed to send verification code: ${errorMessage}`);
+          });
+      }}
+      className="flex flex-col gap-4"
+    >
+      <label htmlFor="reset-email" className="text-sm font-medium">
+        Email address
+      </label>
+      <InputField
+        id="reset-email"
+        name="email"
+        placeholder="Email"
+        type="text"
+        autoComplete="email"
+      />
+      <input name="flow" type="hidden" value="reset" />
+      <Button type="submit" variant="primary">
+        Send code
+      </Button>
+      {onBackToSignIn && (
+        <Button
+          variant="link"
+          type="button"
+          onClick={onBackToSignIn}
+          className="self-end text-xs"
+        >
+          Back to sign in
+        </Button>
+      )}
+    </form>
+  ) : (
+    <form
+      key={"reset"}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        void signIn("password", formData);
+      }}
+      className="flex flex-col gap-4"
+    >
+      <label htmlFor="reset-code" className="text-sm font-medium">
+        Verification code (from the email we sent you)
+      </label>
+      <InputField id="reset-code" name="code" placeholder="Code" type="text" />
+      <label htmlFor="reset-password" className="text-sm font-medium">
+        New password
+      </label>
+      <InputField
+        id="reset-password"
+        name="newPassword"
+        placeholder="New password"
+        type="password"
+        autoComplete="new-password"
+      />
+      <input name="email" value={step.email} type="hidden" />
+      <input name="flow" value="reset-verification" type="hidden" />
+      <Button type="submit" variant="primary">
+        Continue
+      </Button>
+      <Button type="button" variant="link" onClick={() => setStep("forgot")}>
+        Cancel
+      </Button>
+      {onBackToSignIn && (
+        <Button
+          variant="link"
+          type="button"
+          onClick={onBackToSignIn}
+          className="self-end text-xs"
+        >
+          Back to sign in
+        </Button>
+      )}
+    </form>
+  );
+}
+
+
+
+================================================
+FILE: src/auth/SignInForm.tsx
+================================================
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "../common/Button";
+import { InputField } from "../common/InputField";
+
+export function SignInForm({
+  onForgotPassword,
+}: {
+  onForgotPassword?: () => void;
+}) {
+  const { signIn } = useAuthActions();
+  const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <div className="w-full">
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSubmitting(true);
+          const formData = new FormData(e.target as HTMLFormElement);
+          formData.set("flow", flow);
+          void signIn("password", formData).catch((_error) => {
+            const toastTitle =
+              flow === "signIn"
+                ? "Could not sign in, did you mean to sign up?"
+                : "Could not sign up, did you mean to sign in?";
+            toast.error(toastTitle);
+            setSubmitting(false);
+          });
+        }}
+      >
+        <InputField
+          type="email"
+          name="email"
+          placeholder="Email"
+          required
+          autoComplete="email"
+        />
+        <InputField
+          type="password"
+          name="password"
+          placeholder="Password"
+          required
+          autoComplete="current-password"
+        />
+        {flow === "signIn" && onForgotPassword && (
+          <Button
+            variant="link"
+            type="button"
+            className="self-end text-xs"
+            onClick={onForgotPassword}
+          >
+            Forgot password?
+          </Button>
+        )}
+        <Button variant="primary" fullWidth type="submit" disabled={submitting}>
+          {flow === "signIn" ? "Sign in" : "Sign up"}
+        </Button>
+        <div className="text-center text-sm text-slate-600">
+          <span>
+            {flow === "signIn"
+              ? "Don't have an account? "
+              : "Already have an account? "}
+          </span>
+          <Button
+            variant="link"
+            type="button"
+            onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
+          >
+            {flow === "signIn" ? "Sign up instead" : "Sign in instead"}
+          </Button>
+        </div>
+      </form>
+      {/*
+      <div className="flex items-center justify-center my-3">
+        <hr className="my-4 grow" />
+        <span className="mx-4 text-slate-400 ">or</span>
+        <hr className="my-4 grow" />
+      </div>
+      <Button
+        variant="secondary"
+        fullWidth
+        onClick={() => void signIn("anonymous")}
+      >
+        Sign in anonymously
+      </Button> */}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/auth/SignOutButton.tsx
+================================================
+"use client";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
+import { Button } from "../common/Button";
+
+export function SignOutButton() {
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut } = useAuthActions();
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  return (
+    <Button variant="primary" onClick={() => void signOut()}>
+      Sign out
+    </Button>
+  );
+}
+
+
+
+================================================
+FILE: src/auth/UnauthenticatedContent.tsx
+================================================
+import * as React from "react";
+import { SignInForm } from "@/auth/SignInForm";
+import { useState } from "react";
+import { PasswordReset } from "@/auth/PasswordReset";
+import GitHubCorner from "../common/GitHubCorner";
+import ConvexCorner from "../common/ConvexCorner";
+
+interface Props {}
+
+export const UnauthenticatedContent: React.FC<Props> = ({}) => {
+  const [showReset, setShowReset] = useState(false);
+  return (
+    <div className="flex-1 flex items-center justify-center p-4">
+      <div className="w-full max-w-md mx-auto card ">
+        <div className="text-center mb-8 flex flex-col items-center justify-center">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="h-16 w-auto max-w-[220px] mb-4"
+          />
+          {showReset ? (
+            <p className="text-xl text-slate-600">Reset password</p>
+          ) : (
+            <p className="text-xl text-slate-600">Sign in to get started</p>
+          )}
+        </div>
+        {showReset ? (
+          <PasswordReset onBackToSignIn={() => setShowReset(false)} />
+        ) : (
+          <SignInForm onForgotPassword={() => setShowReset(true)} />
+        )}
+      </div>
+      <GitHubCorner />
+      <ConvexCorner />
+    </div>
+  );
+};
+
+
+
+================================================
+FILE: src/common/AppHeader.tsx
+================================================
+import * as React from "react";
+import { routes, useRoute } from "@/routes";
+import { Button } from "@/common/Button";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+
+interface Props {}
+
+export const AppHeader: React.FC<Props> = ({}) => {
+  const route = useRoute();
+
+  return (
+    <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md p-4 flex justify-between items-center border-b border-[var(--color-border)] shadow-sm">
+      <div className="flex items-center">
+        {route.name === "image" ? (
+          <Button
+            variant="secondary"
+            className="rounded-full shadow text-gray-700 hover:bg-gray-100 flex items-center"
+            onClick={() => routes.dashboard().push()}
+            aria-label="Back"
+          >
+            <span className="text-xl mr-1">←</span> Back
+          </Button>
+        ) : route.name === "settings" ? (
+          <Button
+            variant="secondary"
+            className="rounded-full shadow text-gray-700 hover:bg-gray-100 flex items-center"
+            onClick={() => routes.dashboard().push()}
+            aria-label="Back to Dashboard"
+          >
+            <span className="text-xl mr-1">←</span> Back
+          </Button>
+        ) : (
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="h-10 w-auto max-w-[180px]"
+          />
+        )}
+      </div>
+      <div className="flex items-center gap-3">
+        {route.name === "dashboard" && (
+          <button
+            onClick={() => routes.settings().push()}
+            className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-white font-semibold text-sm hover:bg-blue-300 hover:shadow-lg hover:scale-105 transition-all duration-200"
+            aria-label="User Settings"
+          >
+            👤
+          </button>
+        )}
+      </div>
+    </header>
+  );
+};
+
+
+
+================================================
+FILE: src/common/BottomNav.tsx
+================================================
+import * as React from "react";
+import { routes, useRoute } from "@/routes";
+import { Button } from "@/common/Button";
+import { cn, useImageUpload } from "@/common/utils";
+import { LayoutDashboard, ImagePlus } from "lucide-react";
+import { useRef } from "react";
+
+interface Props {}
+
+export const BottomNav: React.FC<Props> = ({}) => {
+  const route = useRoute();
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const handleUpload = useImageUpload();
+  const handleUploadButtonClick = () => {
+    uploadInputRef.current?.click();
+  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleUpload(file);
+    // Reset input so the same file can be selected again
+    e.target.value = "";
+  };
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-[var(--color-border)] shadow-lg flex md:hidden justify-around py-2 px-4">
+      <Button
+        variant="link"
+        className={cn(
+          "flex flex-col items-center text-xs font-medium",
+          route.name === "dashboard" ? "accent-text" : "text-gray-400"
+        )}
+        onClick={() => routes.dashboard().push()}
+      >
+        <LayoutDashboard className="w-6 h-6 mb-1" />
+        <span>Dashboard</span>
+      </Button>
+      <Button
+        variant="link"
+        className={cn(
+          "flex flex-col items-center text-xs font-medium",
+          route.name === "image" ? "accent-text" : "text-gray-400"
+        )}
+        onClick={handleUploadButtonClick}
+      >
+        <ImagePlus className="w-6 h-6 mb-1" />
+        <span>Upload</span>
+      </Button>
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+    </nav>
+  );
+};
+
+
+
+================================================
+FILE: src/common/Button.tsx
+================================================
+import { ButtonHTMLAttributes, forwardRef } from "react";
+import { cn } from "./utils";
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "danger" | "link";
+  size?: "sm" | "md" | "lg";
+  fullWidth?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      className,
+      variant = "primary",
+      size = "md",
+      fullWidth = false,
+      ...props
+    },
+    ref
+  ) => {
+    const baseStyles = "rounded-lg font-semibold transition-colors";
+    const sizeStyles = {
+      sm: "px-3 py-1 text-sm",
+      md: "px-4 py-2",
+      lg: "px-6 py-2 text-lg",
+    };
+    const variantStyles = {
+      primary:
+        "bg-blue-600 text-white hover:bg-blue-700 shadow disabled:opacity-50 disabled:cursor-not-allowed",
+      secondary:
+        "bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed",
+      danger:
+        "border border-red-200 text-red-600 bg-transparent hover:bg-red-50",
+      link: "text-blue-500 hover:text-blue-600 p-0",
+    };
+    const widthStyles = fullWidth ? "w-full" : "";
+
+    return (
+      <button
+        className={cn(
+          baseStyles,
+          sizeStyles[size],
+          variantStyles[variant],
+          widthStyles,
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+
+Button.displayName = "Button";
+
+
+
+================================================
+FILE: src/common/Card.tsx
+================================================
+import { ReactNode, HTMLAttributes } from "react";
+
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
+  className?: string;
+}
+
+export const Card: React.FC<CardProps> = ({
+  children,
+  className = "",
+  ...props
+}) => (
+  <div className={`card ${className}`} {...props}>
+    {children}
+  </div>
+);
+
+
+
+================================================
+FILE: src/common/ConfirmDialog.tsx
+================================================
+import { ReactNode, useEffect, useRef } from "react";
+import { Button } from "./Button";
+
+interface ConfirmDialogProps {
+  open: boolean;
+  title?: string;
+  message: ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+export function ConfirmDialog({
+  open,
+  title = "Are you sure?",
+  message,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    confirmButtonRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onCancel();
+      }}
+      aria-modal="true"
+      role="dialog"
+      tabIndex={-1}
+    >
+      <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm animate-modalIn flex flex-col items-center">
+        <button
+          className="absolute top-2 right-2 z-10 bg-white rounded-full p-2 shadow border border-gray-200 hover:bg-blue-50 transition-colors"
+          onClick={onCancel}
+          aria-label="Close dialog"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-5 h-5 text-blue-600"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        <h3 className="text-lg font-semibold text-slate-800 mb-2 text-center">
+          {title}
+        </h3>
+        <div className="text-gray-700 text-center mb-6">{message}</div>
+        <div className="flex gap-2 w-full">
+          <Button variant="secondary" fullWidth onClick={onCancel}>
+            {cancelLabel}
+          </Button>
+          <Button
+            ref={confirmButtonRef}
+            variant="primary"
+            fullWidth
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease;
+        }
+        @keyframes modalIn {
+          from { transform: scale(0.95) translateY(40px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .animate-modalIn {
+          animation: modalIn 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/common/ConvexCorner.tsx
+================================================
+export default function ConvexCorner() {
+  return (
+    <a
+      href="https://convex.dev"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-0 left-0 z-50 group"
+      aria-label="Made with Convex"
+      title="Made with Convex"
+    >
+      <svg
+        width="80"
+        height="80"
+        viewBox="0 0 250 250"
+        className="fill-gray-600 hover:fill-gray-500 transition-colors"
+      >
+        {/* Bottom-left triangle */}
+        <path d="M0,250 L0,0 L250,250 Z" />
+      </svg>
+      {/* Convex logo positioned over the triangle */}
+      <img
+        src="/convex.svg"
+        alt="Convex"
+        className="absolute bottom-2 left-2 w-8 h-8 group-hover:scale-110 transition-transform duration-200"
+      />
+    </a>
+  );
+}
+
+
+
+================================================
+FILE: src/common/error.ts
+================================================
+import { useCallback } from "react";
+import { ConvexError } from "convex/values";
+import { toast } from "sonner";
+
+export function useApiErrorHandler() {
+  return useCallback((error: unknown) => {
+    console.error("API Error:", error);
+    toast.error(`API Error: ${error}`);
+  }, []);
+}
+
+
+
+================================================
+FILE: src/common/GitHubCorner.tsx
+================================================
+export default function GitHubCorner() {
+  return (
+    <a
+      href="https://github.com/mikecann/decorate-with-convex"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-0 right-0 z-50 group"
+      aria-label="View source on GitHub"
+    >
+      <svg
+        width="80"
+        height="80"
+        viewBox="0 0 250 250"
+        className="fill-gray-600 text-white hover:fill-gray-500 transition-colors scale-x-[-1] rotate-180 "
+      >
+        <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z" />
+        <path
+          d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
+          fill="currentColor"
+          className="origin-[130px_106px] group-hover:animate-pulse"
+        />
+        <path
+          d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
+          fill="currentColor"
+        />
+      </svg>
+    </a>
+  );
+}
+
+
+
+================================================
+FILE: src/common/InputField.tsx
+================================================
+import { forwardRef, InputHTMLAttributes } from "react";
+import { cn } from "./utils";
+
+export interface InputFieldProps
+  extends InputHTMLAttributes<HTMLInputElement> {}
+
+export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
+  ({ className, ...props }, ref) => (
+    <input ref={ref} className={cn("input-field", className)} {...props} />
+  )
+);
+
+InputField.displayName = "InputField";
+
+
+
+================================================
+FILE: src/common/Tabs.tsx
+================================================
+import React from "react";
+import { Button } from "./Button";
+import { cn } from "./utils";
+
+interface TabsProps {
+  tabs: string[];
+  selectedIndex: number;
+  onTabChange: (index: number) => void;
+  className?: string;
+}
+
+const Tabs: React.FC<TabsProps> = ({
+  tabs,
+  selectedIndex,
+  onTabChange,
+  className = "",
+}) => {
+  return (
+    <div
+      className={cn(
+        "flex bg-gray-100 rounded-lg p-1 w-fit mx-auto mb-2 border border-gray-200",
+        className
+      )}
+      role="tablist"
+    >
+      {tabs.map((tab, idx) => (
+        <Button
+          key={tab}
+          variant="link"
+          className={cn(
+            "px-6 py-2 rounded-md transition font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
+            selectedIndex === idx
+              ? "bg-white shadow text-black"
+              : "bg-gray-100 text-gray-500"
+          )}
+          onClick={() => onTabChange(idx)}
+          aria-selected={selectedIndex === idx}
+          aria-controls={`tab-panel-${idx}`}
+          role="tab"
+          tabIndex={selectedIndex === idx ? 0 : -1}
+        >
+          {tab}
+        </Button>
+      ))}
+    </div>
+  );
+};
+
+export default Tabs;
+
+
+
+================================================
+FILE: src/common/utils.ts
+================================================
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { toast } from "sonner";
+import { routes } from "../routes";
+import { useApiErrorHandler } from "./error";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+// Module-level map for storing object URLs for uploading images
+const uploadingImageObjectUrls: Record<string, string> = {};
+
+export function setUploadingImageObjectUrl(imageId: string, objectUrl: string) {
+  uploadingImageObjectUrls[imageId] = objectUrl;
+}
+
+export function getUploadingImageObjectUrl(
+  imageId: string
+): string | undefined {
+  return uploadingImageObjectUrls[imageId];
+}
+
+export function clearUploadingImageObjectUrl(imageId: string) {
+  const url = uploadingImageObjectUrls[imageId];
+  if (url) URL.revokeObjectURL(url);
+  delete uploadingImageObjectUrls[imageId];
+}
+
+// Helper to resize and re-encode image as WebP (or JPEG fallback)
+export async function resizeAndConvertImage(
+  file: File,
+  maxWidth = 2048,
+  maxHeight = 2048
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      let { width, height } = img;
+      // Calculate new dimensions
+      if (width > maxWidth || height > maxHeight) {
+        const aspect = width / height;
+        if (width > height) {
+          width = maxWidth;
+          height = Math.round(maxWidth / aspect);
+        } else {
+          height = maxHeight;
+          width = Math.round(maxHeight * aspect);
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Could not get canvas context"));
+      ctx.drawImage(img, 0, 0, width, height);
+      // Check WebP support
+      const mimeType =
+        canvas.toDataURL("image/webp").indexOf("data:image/webp") === 0
+          ? "image/webp"
+          : "image/jpeg";
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return reject(new Error("Failed to convert image"));
+          resolve(blob);
+        },
+        mimeType,
+        0.92 // quality
+      );
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+export function useImageUpload() {
+  const generateUploadUrl = useMutation(api.images.generateUploadUrl);
+  const markUploaded = useMutation(api.images.markUploaded);
+  const onApiError = useApiErrorHandler();
+
+  const handleUpload = async (file: File) => {
+    try {
+      // Resize and re-encode before upload
+      const processedBlob = await resizeAndConvertImage(file);
+      const processedFile = new File(
+        [processedBlob],
+        file.name.replace(/\.[^.]+$/, ".webp"),
+        {
+          type: processedBlob.type,
+        }
+      );
+      const { uploadUrl, imageId } = await generateUploadUrl();
+      // Store object URL for use in ImagePage (from processed blob)
+      const objectUrl = URL.createObjectURL(processedBlob);
+      setUploadingImageObjectUrl(imageId, objectUrl);
+      // Navigate to progress page immediately
+      routes.image({ imageId: imageId.toString() }).push();
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": processedFile.type },
+        body: processedFile,
+      });
+      const { storageId } = await result.json();
+      await markUploaded({ imageId, storageId });
+      // Clear object URL after upload is complete
+      clearUploadingImageObjectUrl(imageId);
+      toast.success("Image uploaded successfully!");
+    } catch (error) {
+      onApiError(error);
+    }
+  };
+
+  return handleUpload;
+}
+
+/**
+ * Detects if the current device is a mobile/touch device
+ * @returns true if the device supports touch input, false otherwise
+ */
+export function isMobile(): boolean {
+  return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+}
+
+
+
+================================================
+FILE: src/components/imagePage/PromptPanel.tsx
+================================================
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
+import { toast } from "sonner";
+import { useApiErrorHandler } from "../../common/error";
+import { routes } from "../../routes";
+import { useState } from "react";
+import { Button } from "../../common/Button";
+import { ConfirmDialog } from "../../common/ConfirmDialog";
+
+interface PromptPanelProps {
+  imageId: Id<"images">;
+  canGenerate: boolean;
+  currentPrompt?: string;
+}
+
+const defaultPrompt =
+  "Please decorate this so it looks like a professional interior decorator has designed it";
+
+export function PromptPanel({
+  imageId,
+  canGenerate,
+  currentPrompt,
+}: PromptPanelProps) {
+  const startGeneration = useMutation(api.images.startGeneration);
+  const deleteImage = useMutation(api.images.deleteImage);
+  const onApiError = useApiErrorHandler();
+  const [prompt, setPrompt] = useState(defaultPrompt);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleDelete = async () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setShowConfirm(false);
+    await deleteImage({ imageId }).catch(onApiError);
+    routes.dashboard().push();
+  };
+
+  return (
+    <div className="flex flex-col justify-between w-full md:w-1/2 md:max-w-[500px] max-w-full bg-white r p-8 pb-[100px] md:p-12 overflow-y-auto min-h-[320px] border-r border-[var(--color-border)]">
+      <ConfirmDialog
+        open={showConfirm}
+        title="Delete image"
+        message="Are you sure you want to delete this image? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowConfirm(false)}
+      />
+      <div>
+        <h2 className="text-2xl font-bold mb-4 text-slate-800">Image Prompt</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Enter a description of how you want your image to be decorated.
+        </p>
+        <textarea
+          id="prompt"
+          className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[200px] resize-y text-base mb-4 shadow-sm"
+          value={currentPrompt ?? prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder={defaultPrompt}
+          disabled={!canGenerate}
+        />
+      </div>
+      <div className="flex flex-col gap-2 mt-4">
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={!canGenerate}
+          onClick={() => {
+            if (!canGenerate) {
+              toast.error(
+                "Please wait for the image to finish uploading before generating."
+              );
+              return;
+            }
+            startGeneration({
+              imageId,
+              prompt,
+            }).catch(onApiError);
+          }}
+        >
+          {currentPrompt ? "Re-generate" : "Generate"}
+        </Button>
+        <Button
+          variant="danger"
+          fullWidth
+          onClick={handleDelete}
+          aria-label="Delete"
+        >
+          Delete image
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/dashboardPage/DashboardPage.tsx
+================================================
+import { useState } from "react";
+import { api } from "../../convex/_generated/api";
+import { useImageUpload } from "../common/utils";
+import { UploadCard } from "./UploadCard";
+import { ImageGrid } from "./ImageGrid";
+import { useQuery } from "convex-helpers/react/cache";
+import GitHubCorner from "../common/GitHubCorner";
+import ConvexCorner from "../common/ConvexCorner";
+
+export default function DashboardPage() {
+  const images = useQuery(api.images.listImages);
+  const isLoading = images === undefined;
+  const [isDragging, setIsDragging] = useState(false);
+  const handleUpload = useImageUpload();
+
+  return (
+    <div className="max-w-6xl p-4 md:p-8 mx-auto w-full space-y-10">
+      <UploadCard
+        onUpload={handleUpload}
+        isDragging={isDragging}
+        setIsDragging={setIsDragging}
+      />
+      <ImageGrid images={images || []} loading={isLoading} />
+      <GitHubCorner />
+      <ConvexCorner />
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/dashboardPage/ImageCard.tsx
+================================================
+import { Card } from "../common/Card";
+import { routes } from "../routes";
+import React from "react";
+
+interface ImageCardProps {
+  image: any; // Replace with proper Image type if available
+}
+
+export function ImageCard({ image }: ImageCardProps) {
+  let statusLabel = "";
+  let statusColor = "";
+  if (image.status.kind === "uploading") {
+    statusLabel = "Uploading";
+    statusColor = "bg-gray-200 text-gray-700 border-gray-300";
+  } else if (image.status.kind === "uploaded") {
+    statusLabel = "Uploaded";
+    statusColor = "bg-blue-100 text-blue-700 border-blue-200";
+  } else if (image.status.kind === "generating") {
+    statusLabel = "Generating";
+    statusColor = "bg-yellow-100 text-yellow-800 border-yellow-300";
+  } else if (image.status.kind === "generated") {
+    statusLabel = "Complete";
+    statusColor = "bg-green-100 text-green-700 border-green-200";
+  }
+
+  // Prompt is only present for generating/generated
+  const prompt =
+    image.status.kind === "generating" || image.status.kind === "generated"
+      ? image.status.prompt
+      : undefined;
+
+  return (
+    <Card
+      className="cursor-pointer hover:shadow-xl transition-shadow flex flex-col gap-2 group border border-[var(--color-border)] relative"
+      onClick={() => routes.image({ imageId: image._id.toString() }).push()}
+      tabIndex={0}
+      role="button"
+      onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === "Enter" || e.key === " ")
+          routes.image({ imageId: image._id.toString() }).push();
+      }}
+    >
+      {/* Status pill */}
+      <div
+        className={`absolute top-3 right-3 px-3 py-1 z-10 rounded-full text-xs font-semibold border shadow-sm ${statusColor}`}
+      >
+        {statusLabel}
+      </div>
+      {/* Image(s) */}
+      {image.status.kind === "uploading" && (
+        <div className="animate-pulse bg-gray-200 h-48 rounded-lg flex items-center justify-center w-full">
+          <span className="text-lg text-gray-500">Uploading...</span>
+        </div>
+      )}
+      {image.status.kind === "uploaded" && (
+        <img
+          src={image.status.image.url}
+          alt="Original"
+          className="w-full h-48 object-cover rounded-lg"
+        />
+      )}
+      {image.status.kind === "generating" && (
+        <div className="relative w-full h-48 flex items-center justify-center">
+          <img
+            src={image.status.image.url}
+            alt="Original"
+            className="w-full h-48 object-cover rounded-lg opacity-60"
+          />
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-lg z-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-t-blue-400 border-gray-200 mb-2 bg-white/70"></div>
+            <span className="text-sm text-white font-semibold">
+              Generating...
+            </span>
+          </div>
+        </div>
+      )}
+      {image.status.kind === "generated" && (
+        <div className="grid grid-cols-2 gap-2">
+          <img
+            src={image.status.image.url}
+            alt="Original"
+            className="w-full h-24 object-cover rounded-lg"
+          />
+          <img
+            src={image.status.decoratedImage.url}
+            alt="Decorated"
+            className="w-full h-24 object-cover rounded-lg"
+          />
+        </div>
+      )}
+      {/* Prompt text */}
+      {prompt && (
+        <div
+          className="text-xs text-gray-600 italic mt-2 truncate"
+          title={prompt}
+        >
+          {prompt}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+
+
+================================================
+FILE: src/dashboardPage/ImageGrid.tsx
+================================================
+import { ImageCard } from "./ImageCard";
+import { Card } from "../common/Card";
+
+interface ImageGridProps {
+  images: any[]; // Replace with proper Image[] type if available
+  loading?: boolean;
+}
+
+export function ImageGrid({ images, loading }: ImageGridProps) {
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        {[...Array(3)].map((_, i) => (
+          <Card
+            key={i}
+            className="animate-pulse flex flex-col gap-2 border border-[var(--color-border)]"
+          >
+            <div className="bg-gray-200 h-48 rounded-lg mb-2" />
+            <div className="h-4 bg-gray-200 rounded w-1/2 mb-1" />
+            <div className="h-3 bg-gray-100 rounded w-1/3" />
+          </Card>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {images.map((image) => (
+        <ImageCard key={image._id} image={image} />
+      ))}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/dashboardPage/UploadCard.tsx
+================================================
+import { Card } from "../common/Card";
+import React from "react";
+import { isMobile } from "../common/utils";
+
+interface UploadCardProps {
+  onUpload: (file: File) => void;
+  isDragging: boolean;
+  setIsDragging: (drag: boolean) => void;
+}
+
+export function UploadCard({
+  onUpload,
+  isDragging,
+  setIsDragging,
+}: UploadCardProps) {
+  const mobile = isMobile();
+
+  return (
+    <Card
+      className={`border-2 border-dashed p-10 text-center transition-colors flex flex-col items-center justify-center mb-8 ${
+        isDragging
+          ? "border-blue-400 bg-blue-50"
+          : "border-[var(--color-border)] bg-white"
+      }`}
+      onDragOver={(e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={(e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) onUpload(file);
+      }}
+    >
+      <div className="flex flex-col items-center gap-4">
+        <div className="text-5xl text-blue-400 mb-2">📸</div>
+        <div>
+          <p className="text-2xl font-bold text-slate-800 mb-1">
+            Upload your image
+          </p>
+          <p className="text-base text-gray-500 mb-2">
+            {mobile
+              ? "Choose from gallery or take a photo"
+              : "Drag & drop or select a file to get started"}
+          </p>
+          <div className={`mt-2 ${mobile ? "flex flex-col gap-2" : ""}`}>
+            {/* Gallery/File picker */}
+            <label className="inline-block cursor-pointer">
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*"
+                multiple={false}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  onUpload(file);
+                }}
+              />
+              <span className="button px-6 py-2">Select a file</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/FullscreenModal.tsx
+================================================
+import { ReactNode, useEffect, useRef } from "react";
+
+interface FullscreenModalProps {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+export function FullscreenModal({
+  open,
+  onClose,
+  children,
+}: FullscreenModalProps) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onClose();
+      }}
+      aria-modal="true"
+      role="dialog"
+      tabIndex={-1}
+    >
+      <div className="relative bg-white rounded-2xl shadow-2xl p-1 md:p-2 max-w-[98vw] max-h-[98vh] w-auto h-auto animate-modalIn">
+        <button
+          className="absolute top-2 right-2 z-10 bg-white rounded-full p-2 shadow border border-gray-200 hover:bg-blue-50 transition-colors"
+          onClick={onClose}
+          aria-label="Close modal"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-5 h-5 text-blue-600"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        <div className="flex items-center justify-center w-full h-full">
+          {children}
+        </div>
+      </div>
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease;
+        }
+        @keyframes modalIn {
+          from { transform: scale(0.95) translateY(40px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .animate-modalIn {
+          animation: modalIn 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/GeneratedImage.tsx
+================================================
+import { useState } from "react";
+import { Download } from "lucide-react";
+import Tabs from "../common/Tabs";
+import { ImageViewer } from "./ImageViewer";
+
+interface GeneratedImageProps {
+  originalImageUrl: string;
+  decoratedImageUrl: string;
+  prompt: string;
+}
+
+export function GeneratedImage({
+  originalImageUrl,
+  decoratedImageUrl,
+  prompt,
+}: GeneratedImageProps) {
+  const [tabIndex, setTabIndex] = useState(1);
+
+  const currentImageUrl = tabIndex === 0 ? originalImageUrl : decoratedImageUrl;
+  const currentImageType = tabIndex === 0 ? "original" : "decorated";
+
+  return (
+    <div className="relative w-full h-full flex flex-col items-center justify-center">
+      <Tabs
+        tabs={["Original", "Decorated"]}
+        selectedIndex={tabIndex}
+        onTabChange={setTabIndex}
+      />
+      <div className="rounded-2xl flex items-center justify-center w-full p-4 transition-all duration-300">
+        <div className="relative w-full h-full flex items-center justify-center">
+          <ImageViewer src={currentImageUrl} alt={currentImageType}>
+            <a
+              href={currentImageUrl}
+              download={
+                currentImageUrl.split("/").pop() ||
+                `${currentImageType}-image.webp`
+              }
+              className="absolute top-2 right-2 z-2 bg-white/80 rounded-full p-2 shadow border border-gray-200 hover:bg-blue-50 transition-colors"
+              title={`Download ${currentImageType} image`}
+              aria-label={`Download ${currentImageType} image`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Download className="w-5 h-5 text-blue-600" />
+            </a>
+            {prompt && currentImageType == "decorated" && (
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-center font-medium px-4 py-2 bg-white/80 rounded shadow">
+                <span className="italic">{prompt}</span>
+              </div>
+            )}
+          </ImageViewer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/GeneratingImage.tsx
+================================================
+import { ImageViewer } from "./ImageViewer";
+
+interface GeneratingImageProps {
+  imageUrl: string;
+  prompt: string;
+}
+
+export function GeneratingImage({ imageUrl, prompt }: GeneratingImageProps) {
+  return (
+    <ImageViewer src={imageUrl} alt="Original">
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm rounded-2xl z-10">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-blue-500 border-gray-200 mb-4 bg-white/80"></div>
+        <span className="text-xl text-gray-700 font-semibold mb-2">
+          Generating...
+        </span>
+        <span className="text-base text-gray-600 text-center px-2">
+          This may take a minute or two
+        </span>
+      </div>
+    </ImageViewer>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/ImageDisplay.tsx
+================================================
+import { Id } from "../../convex/_generated/dataModel";
+import { UploadingImage } from "./UploadingImage";
+import { UploadedImage } from "./UploadedImage";
+import { GeneratingImage } from "./GeneratingImage";
+import { GeneratedImage } from "./GeneratedImage";
+
+interface ImageDisplayProps {
+  imageId: Id<"images">;
+  status: {
+    kind: "uploading" | "uploaded" | "generating" | "generated";
+    image?: { url: string };
+    decoratedImage?: { url: string };
+    prompt?: string;
+  };
+}
+
+export function ImageDisplay({ imageId, status }: ImageDisplayProps) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br min-h-[320px] relative overflow-hidden">
+      <div className="flex flex-col items-center justify-center w-full h-full p-4 md:p-8">
+        {status.kind === "uploading" && <UploadingImage imageId={imageId} />}
+
+        {status.kind === "uploaded" && status.image && (
+          <UploadedImage imageUrl={status.image.url} />
+        )}
+
+        {status.kind === "generating" && status.image && status.prompt && (
+          <GeneratingImage imageUrl={status.image.url} prompt={status.prompt} />
+        )}
+
+        {status.kind === "generated" &&
+          status.image &&
+          status.decoratedImage &&
+          status.prompt && (
+            <GeneratedImage
+              originalImageUrl={status.image.url}
+              decoratedImageUrl={status.decoratedImage.url}
+              prompt={status.prompt}
+            />
+          )}
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/ImagePage.tsx
+================================================
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { PromptPanel } from "./PromptPanel";
+import { ImageDisplay } from "./ImageDisplay";
+
+interface ImageProgressPageProps {
+  imageId: Id<"images">;
+}
+
+export default function ImagePage({ imageId }: ImageProgressPageProps) {
+  const image = useQuery(api.images.getImage, {
+    imageId,
+  });
+
+  return (
+    <div className="relative flex flex-col-reverse md:flex-row flex-1 w-full bg-[var(--color-bg)]">
+      {image && <PromptPanel image={image} />}
+      {image && <ImageDisplay imageId={imageId} status={image.status} />}
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/ImageViewer.tsx
+================================================
+import { useState } from "react";
+import { FullscreenModal } from "./FullscreenModal";
+
+interface ImageViewerProps {
+  src: string;
+  alt?: string;
+  className?: string;
+  children?: React.ReactNode; // overlays
+  modalAlt?: string;
+}
+
+export function ImageViewer({
+  src,
+  alt,
+  className = "",
+  children,
+  modalAlt,
+}: ImageViewerProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <div
+        className={`relative cursor-zoom-in ${className} rounded-2xl overflow-hidden`}
+        tabIndex={0}
+        role="button"
+        aria-label="View image fullscreen"
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setOpen(true);
+        }}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="max-h-[calc(var(--vh,1vh)*60)] max-w-full object-contain w-full h-full"
+        />
+        {children}
+      </div>
+      <FullscreenModal open={open} onClose={() => setOpen(false)}>
+        <img
+          src={src}
+          alt={modalAlt || alt}
+          className="max-h-[calc(var(--vh,1vh)*95)] max-w-[95vw] object-contain rounded-2xl shadow-xl bg-white"
+        />
+      </FullscreenModal>
+    </>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/PromptPanel.tsx
+================================================
+import { useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Doc, Id } from "../../convex/_generated/dataModel";
+import { toast } from "sonner";
+import { useApiErrorHandler } from "../common/error";
+import { routes } from "../routes";
+import { useState } from "react";
+import { Button } from "../common/Button";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import { RegenerateModal } from "./RegenerateModal";
+import { isMobile } from "../common/utils";
+
+interface PromptPanelProps {
+  image: Doc<"images">;
+}
+
+const defaultPrompt =
+  "Please decorate this so it looks like a professional interior decorator has designed it";
+
+export function PromptPanel({ image }: PromptPanelProps) {
+  const canGenerate =
+    !!image &&
+    (image.status.kind === "uploaded" || image.status.kind === "generated");
+
+  const currentPrompt =
+    image &&
+    (image.status.kind === "generating" || image.status.kind === "generated")
+      ? image.status.prompt
+      : undefined;
+
+  const startGeneration = useMutation(api.images.startGeneration);
+  const startRegeneration = useMutation(api.images.startRegeneration);
+  const deleteImage = useMutation(api.images.deleteImage);
+  const onApiError = useApiErrorHandler();
+  const [prompt, setPrompt] = useState(currentPrompt ?? defaultPrompt);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+
+  const handleDelete = async () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setShowConfirm(false);
+    await deleteImage({ imageId: image._id }).catch(onApiError);
+    routes.dashboard().push();
+  };
+
+  const handleGenerate = () => {
+    if (!canGenerate) {
+      toast.error(
+        "Please wait for the image to finish uploading before generating."
+      );
+      return;
+    }
+
+    // If this is a re-generation (image already has decorated version), show modal
+    if (image.status.kind === "generated" && image.status.decoratedImage) {
+      setShowRegenerateModal(true);
+    } else {
+      // First time generation, use startGeneration
+      startGeneration({
+        imageId: image._id,
+        prompt,
+      }).catch(onApiError);
+    }
+  };
+
+  const handleSelectOriginal = () => {
+    setShowRegenerateModal(false);
+    startRegeneration({
+      imageId: image._id,
+      prompt,
+      baseImage: "original",
+    }).catch(onApiError);
+  };
+
+  const handleSelectDecorated = () => {
+    setShowRegenerateModal(false);
+    startRegeneration({
+      imageId: image._id,
+      prompt,
+      baseImage: "decorated",
+    }).catch(onApiError);
+  };
+
+  return (
+    <div className="flex flex-col justify-between w-full md:w-1/2 md:max-w-[500px] max-w-full bg-white r p-8 pb-[100px] md:p-12 overflow-y-auto min-h-[320px] border-r border-[var(--color-border)]">
+      <ConfirmDialog
+        open={showConfirm}
+        title="Delete image"
+        message="Are you sure you want to delete this image? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowConfirm(false)}
+      />
+      <RegenerateModal
+        open={showRegenerateModal}
+        originalImageUrl={
+          image.status.kind === "generated" && image.status.image
+            ? image.status.image.url
+            : ""
+        }
+        decoratedImageUrl={
+          image.status.kind === "generated" && image.status.decoratedImage
+            ? image.status.decoratedImage.url
+            : ""
+        }
+        onSelectOriginal={handleSelectOriginal}
+        onSelectDecorated={handleSelectDecorated}
+        onCancel={() => setShowRegenerateModal(false)}
+      />
+      <div>
+        <h2 className="text-2xl font-bold mb-4 text-slate-800">Image Prompt</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Enter a description of how you want your image to be decorated.
+        </p>
+        <textarea
+          id="prompt"
+          className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[200px] resize-y text-base mb-4 shadow-sm"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onFocus={(e) => {
+            // Select all text on mobile devices when focused
+            if (isMobile()) e.target.select();
+          }}
+          placeholder={defaultPrompt}
+          disabled={!canGenerate}
+        />
+      </div>
+      <div className="flex flex-col gap-2 mt-4">
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          disabled={!canGenerate}
+          onClick={handleGenerate}
+        >
+          {currentPrompt ? "Re-generate" : "Generate"}
+        </Button>
+        <Button
+          variant="danger"
+          fullWidth
+          onClick={handleDelete}
+          aria-label="Delete"
+        >
+          Delete image
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/RegenerateModal.tsx
+================================================
+import { ReactNode, useEffect, useRef } from "react";
+import { Button } from "../common/Button";
+
+interface RegenerateModalProps {
+  open: boolean;
+  originalImageUrl: string;
+  decoratedImageUrl: string;
+  onSelectOriginal: () => void;
+  onSelectDecorated: () => void;
+  onCancel: () => void;
+}
+
+export function RegenerateModal({
+  open,
+  originalImageUrl,
+  decoratedImageUrl,
+  onSelectOriginal,
+  onSelectDecorated,
+  onCancel,
+}: RegenerateModalProps) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const originalButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    originalButtonRef.current?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      ref={overlayRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === overlayRef.current) onCancel();
+      }}
+      aria-modal="true"
+      role="dialog"
+      tabIndex={-1}
+    >
+      <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md max-h-[calc(100vh-20px)] animate-modalIn flex flex-col">
+        <button
+          className="absolute top-2 right-2 z-10 bg-white rounded-full p-2 shadow border border-gray-200 hover:bg-blue-50 transition-colors"
+          onClick={onCancel}
+          aria-label="Close dialog"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-5 h-5 text-blue-600"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
+        <h3 className="text-lg font-semibold text-slate-800 mb-4 text-center">
+          Choose Base Image
+        </h3>
+
+        <p className="text-gray-600 text-center mb-6 text-sm">
+          Which image would you like to use as the starting point for
+          regeneration?
+        </p>
+
+        <div className="flex flex-col gap-4 mb-6 overflow-y-auto flex-1">
+          {/* Original Image Option */}
+          <button
+            ref={originalButtonRef}
+            onClick={onSelectOriginal}
+            className="flex flex-col items-center p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+          >
+            <img
+              src={originalImageUrl}
+              alt="Original"
+              className="w-full h-32 object-cover rounded-lg mb-2"
+            />
+            <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700">
+              Original Image
+            </span>
+          </button>
+
+          {/* Decorated Image Option */}
+          <button
+            onClick={onSelectDecorated}
+            className="flex flex-col items-center p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+          >
+            <img
+              src={decoratedImageUrl}
+              alt="Decorated"
+              className="w-full h-32 object-cover rounded-lg mb-2"
+            />
+            <span className="text-sm font-medium text-gray-700 group-hover:text-blue-700">
+              Decorated Image
+            </span>
+          </button>
+        </div>
+
+        <Button variant="secondary" fullWidth onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease;
+        }
+        @keyframes modalIn {
+          from { transform: scale(0.95) translateY(40px); opacity: 0; }
+          to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .animate-modalIn {
+          animation: modalIn 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+      `}</style>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: src/imagePage/UploadedImage.tsx
+================================================
+import { ImageViewer } from "./ImageViewer";
+
+interface UploadedImageProps {
+  imageUrl: string;
+}
+
+export function UploadedImage({ imageUrl }: UploadedImageProps) {
+  return <ImageViewer src={imageUrl} alt="Uploaded" />;
+}
+
+
+
+================================================
+FILE: src/imagePage/UploadingImage.tsx
+================================================
+import { Id } from "../../convex/_generated/dataModel";
+import { getUploadingImageObjectUrl } from "../common/utils";
+import { ImageViewer } from "./ImageViewer";
+
+interface UploadingImageProps {
+  imageId: Id<"images">;
+}
+
+export function UploadingImage({ imageId }: UploadingImageProps) {
+  const objectUrl = getUploadingImageObjectUrl(imageId as string);
+
+  if (!objectUrl) {
+    return (
+      <div className="animate-pulse bg-gray-200 h-80 w-full rounded-2xl flex items-center justify-center">
+        <span className="text-lg text-gray-500">Uploading...</span>
+      </div>
+    );
+  }
+
+  return (
+    <ImageViewer src={objectUrl} alt="Uploading preview">
+      <div className="absolute top-4 right-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-t-blue-500 border-gray-200 bg-white/70"></div>
+      </div>
+    </ImageViewer>
+  );
+}
+
+
+
+================================================
+FILE: src/settingsPage/SettingsPage.tsx
+================================================
+import React, { useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { Card } from "@/common/Card";
+import { Button } from "@/common/Button";
+import { SignOutButton } from "@/auth/SignOutButton";
+import { toast } from "sonner";
+
+export default function SettingsPage() {
+  const user = useQuery(api.images.getCurrentUser);
+  const userSettings = useQuery(api.userSettings.getUserSettings);
+  const updateSettings = useMutation(api.userSettings.updateUserSettings);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleImageModelChange = async (
+    newModel: "openai/gpt-image-1" | "google/gemini-2.5-flash-image-preview"
+  ) => {
+    setIsUpdating(true);
+    try {
+      await updateSettings({ imageModel: newModel });
+      toast.success("Settings updated successfully");
+    } catch (error) {
+      toast.error("Failed to update settings");
+      console.error("Error updating settings:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  if (user === undefined || userSettings === undefined) {
+    return (
+      <div className="flex-1 p-6">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Settings</h1>
+          <Card className="p-6">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex-1 p-6">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6">Settings</h1>
+          <Card className="p-6">
+            <p className="text-gray-600">Not authenticated</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 p-6 ">
+      <div className="max-w-2xl mx-auto mb-14">
+        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+
+        <Card className="p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">User Information</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                User ID
+              </label>
+              <p className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
+                {user._id}
+              </p>
+            </div>
+
+            {user.email && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <p className="text-sm text-gray-900">{user.email}</p>
+              </div>
+            )}
+
+            {user.name && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name
+                </label>
+                <p className="text-sm text-gray-900">{user.name}</p>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Account Created
+              </label>
+              <p className="text-sm text-gray-900">
+                {new Date(user._creationTime).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">
+            Image Generation Settings
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Image Model
+              </label>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <input
+                    type="radio"
+                    id="google-model"
+                    name="imageModel"
+                    value="google/gemini-2.5-flash-image-preview"
+                    checked={
+                      userSettings.imageModel ===
+                      "google/gemini-2.5-flash-image-preview"
+                    }
+                    onChange={() =>
+                      handleImageModelChange(
+                        "google/gemini-2.5-flash-image-preview"
+                      )
+                    }
+                    disabled={isUpdating}
+                    className="mr-3"
+                  />
+                  <label
+                    htmlFor="google-model"
+                    className="text-sm text-gray-900"
+                  >
+                    Google Gemini 2.5 Flash (Default)
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="radio"
+                    id="openai-model"
+                    name="imageModel"
+                    value="openai/gpt-image-1"
+                    checked={userSettings.imageModel === "openai/gpt-image-1"}
+                    onChange={() =>
+                      handleImageModelChange("openai/gpt-image-1")
+                    }
+                    disabled={isUpdating}
+                    className="mr-3"
+                  />
+                  <label
+                    htmlFor="openai-model"
+                    className="text-sm text-gray-900"
+                  >
+                    OpenAI GPT Image 1
+                  </label>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Current selection:{" "}
+                <span className="font-medium">{userSettings.imageModel}</span>
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 mt-6">
+          <h2 className="text-xl font-semibold mb-4">Account Actions</h2>
+          <div className="flex justify-start">
+            <SignOutButton />
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+
+
+================================================
+FILE: .cursor/rules/convex_rules.mdc
+================================================
+---
+description: Guidelines and best practices for building Convex projects, including database schema design, queries, mutations, and real-world examples
+globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
+---
+
+# Convex guidelines
+## Function guidelines
+### New function syntax
+- ALWAYS use the new function syntax for Convex functions. For example:
+      ```typescript
+      import { query } from "./_generated/server";
+      import { v } from "convex/values";
+      export const f = query({
+          args: {},
+          returns: v.null(),
+          handler: async (ctx, args) => {
+          // Function body
+          },
+      });
+      ```
+
+### Http endpoint syntax
+- HTTP endpoints are defined in `convex/http.ts` and require an `httpAction` decorator. For example:
+      ```typescript
+      import { httpRouter } from "convex/server";
+      import { httpAction } from "./_generated/server";
+      const http = httpRouter();
+      http.route({
+          path: "/echo",
+          method: "POST",
+          handler: httpAction(async (ctx, req) => {
+          const body = await req.bytes();
+          return new Response(body, { status: 200 });
+          }),
+      });
+      ```
+- HTTP endpoints are always registered at the exact path you specify in the `path` field. For example, if you specify `/api/someRoute`, the endpoint will be registered at `/api/someRoute`.
+
+### Validators
+- Below is an example of an array validator:
+                            ```typescript
+                            import { mutation } from "./_generated/server";
+                            import { v } from "convex/values";
+
+                            export default mutation({
+                            args: {
+                                simpleArray: v.array(v.union(v.string(), v.number())),
+                            },
+                            handler: async (ctx, args) => {
+                                //...
+                            },
+                            });
+                            ```
+- Below is an example of a schema with validators that codify a discriminated union type:
+                            ```typescript
+                            import { defineSchema, defineTable } from "convex/server";
+                            import { v } from "convex/values";
+
+                            export default defineSchema({
+                                results: defineTable(
+                                    v.union(
+                                        v.object({
+                                            kind: v.literal("error"),
+                                            errorMessage: v.string(),
+                                        }),
+                                        v.object({
+                                            kind: v.literal("success"),
+                                            value: v.number(),
+                                        }),
+                                    ),
+                                )
+                            });
+                            ```
+- Always use the `v.null()` validator when returning a null value. Below is an example query that returns a null value:
+                                  ```typescript
+                                  import { query } from "./_generated/server";
+                                  import { v } from "convex/values";
+
+                                  export const exampleQuery = query({
+                                    args: {},
+                                    returns: v.null(),
+                                    handler: async (ctx, args) => {
+                                        console.log("This query returns a null value");
+                                        return null;
+                                    },
+                                  });
+                                  ```
+- Here are the valid Convex types along with their respective validators:
+ Convex Type  | TS/JS type  |  Example Usage         | Validator for argument validation and schemas  | Notes                                                                                                                                                                                                 |
+| ----------- | ------------| -----------------------| -----------------------------------------------| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Id          | string      | `doc._id`              | `v.id(tableName)`                              |                                                                                                                                                                                                       |
+| Null        | null        | `null`                 | `v.null()`                                     | JavaScript's `undefined` is not a valid Convex value. Functions the return `undefined` or do not return will return `null` when called from a client. Use `null` instead.                             |
+| Int64       | bigint      | `3n`                   | `v.int64()`                                    | Int64s only support BigInts between -2^63 and 2^63-1. Convex supports `bigint`s in most modern browsers.                                                                                              |
+| Float64     | number      | `3.1`                  | `v.number()`                                   | Convex supports all IEEE-754 double-precision floating point numbers (such as NaNs). Inf and NaN are JSON serialized as strings.                                                                      |
+| Boolean     | boolean     | `true`                 | `v.boolean()`                                  |
+| String      | string      | `"abc"`                | `v.string()`                                   | Strings are stored as UTF-8 and must be valid Unicode sequences. Strings must be smaller than the 1MB total size limit when encoded as UTF-8.                                                         |
+| Bytes       | ArrayBuffer | `new ArrayBuffer(8)`   | `v.bytes()`                                    | Convex supports first class bytestrings, passed in as `ArrayBuffer`s. Bytestrings must be smaller than the 1MB total size limit for Convex types.                                                     |
+| Array       | Array]      | `[1, 3.2, "abc"]`      | `v.array(values)`                              | Arrays can have at most 8192 values.                                                                                                                                                                  |
+| Object      | Object      | `{a: "abc"}`           | `v.object({property: value})`                  | Convex only supports "plain old JavaScript objects" (objects that do not have a custom prototype). Objects can have at most 1024 entries. Field names must be nonempty and not start with "$" or "_". |
+| Record      | Record      | `{"a": "1", "b": "2"}` | `v.record(keys, values)`                       | Records are objects at runtime, but can have dynamic keys. Keys must be only ASCII characters, nonempty, and not start with "$" or "_".                                                               |
+
+### Function registration
+- Use `internalQuery`, `internalMutation`, and `internalAction` to register internal functions. These functions are private and aren't part of an app's API. They can only be called by other Convex functions. These functions are always imported from `./_generated/server`.
+- Use `query`, `mutation`, and `action` to register public functions. These functions are part of the public API and are exposed to the public Internet. Do NOT use `query`, `mutation`, or `action` to register sensitive internal functions that should be kept private.
+- You CANNOT register a function through the `api` or `internal` objects.
+- ALWAYS include argument and return validators for all Convex functions. This includes all of `query`, `internalQuery`, `mutation`, `internalMutation`, `action`, and `internalAction`. If a function doesn't return anything, include `returns: v.null()` as its output validator.
+- If the JavaScript implementation of a Convex function doesn't have a return value, it implicitly returns `null`.
+
+### Function calling
+- Use `ctx.runQuery` to call a query from a query, mutation, or action.
+- Use `ctx.runMutation` to call a mutation from a mutation or action.
+- Use `ctx.runAction` to call an action from an action.
+- ONLY call an action from another action if you need to cross runtimes (e.g. from V8 to Node). Otherwise, pull out the shared code into a helper async function and call that directly instead.
+- Try to use as few calls from actions to queries and mutations as possible. Queries and mutations are transactions, so splitting logic up into multiple calls introduces the risk of race conditions.
+- All of these calls take in a `FunctionReference`. Do NOT try to pass the callee function directly into one of these calls.
+- When using `ctx.runQuery`, `ctx.runMutation`, or `ctx.runAction` to call a function in the same file, specify a type annotation on the return value to work around TypeScript circularity limitations. For example,
+                            ```
+                            export const f = query({
+                              args: { name: v.string() },
+                              returns: v.string(),
+                              handler: async (ctx, args) => {
+                                return "Hello " + args.name;
+                              },
+                            });
+
+                            export const g = query({
+                              args: {},
+                              returns: v.null(),
+                              handler: async (ctx, args) => {
+                                const result: string = await ctx.runQuery(api.example.f, { name: "Bob" });
+                                return null;
+                              },
+                            });
+                            ```
+
+### Function references
+- Function references are pointers to registered Convex functions.
+- Use the `api` object defined by the framework in `convex/_generated/api.ts` to call public functions registered with `query`, `mutation`, or `action`.
+- Use the `internal` object defined by the framework in `convex/_generated/api.ts` to call internal (or private) functions registered with `internalQuery`, `internalMutation`, or `internalAction`.
+- Convex uses file-based routing, so a public function defined in `convex/example.ts` named `f` has a function reference of `api.example.f`.
+- A private function defined in `convex/example.ts` named `g` has a function reference of `internal.example.g`.
+- Functions can also registered within directories nested within the `convex/` folder. For example, a public function `h` defined in `convex/messages/access.ts` has a function reference of `api.messages.access.h`.
+
+### Api design
+- Convex uses file-based routing, so thoughtfully organize files with public query, mutation, or action functions within the `convex/` directory.
+- Use `query`, `mutation`, and `action` to define public functions.
+- Use `internalQuery`, `internalMutation`, and `internalAction` to define private, internal functions.
+
+### Pagination
+- Paginated queries are queries that return a list of results in incremental pages.
+- You can define pagination using the following syntax:
+
+                            ```ts
+                            import { v } from "convex/values";
+                            import { query, mutation } from "./_generated/server";
+                            import { paginationOptsValidator } from "convex/server";
+                            export const listWithExtraArg = query({
+                                args: { paginationOpts: paginationOptsValidator, author: v.string() },
+                                handler: async (ctx, args) => {
+                                    return await ctx.db
+                                    .query("messages")
+                                    .filter((q) => q.eq(q.field("author"), args.author))
+                                    .order("desc")
+                                    .paginate(args.paginationOpts);
+                                },
+                            });
+                            ```
+                            Note: `paginationOpts` is an object with the following properties:
+                            - `numItems`: the maximum number of documents to return (the validator is `v.number()`)
+                            - `cursor`: the cursor to use to fetch the next page of documents (the validator is `v.union(v.string(), v.null())`)
+- A query that ends in `.paginate()` returns an object that has the following properties:
+                            - page (contains an array of documents that you fetches)
+                            - isDone (a boolean that represents whether or not this is the last page of documents)
+                            - continueCursor (a string that represents the cursor to use to fetch the next page of documents)
+
+
+## Validator guidelines
+- `v.bigint()` is deprecated for representing signed 64-bit integers. Use `v.int64()` instead.
+- Use `v.record()` for defining a record type. `v.map()` and `v.set()` are not supported.
+
+## Schema guidelines
+- Always define your schema in `convex/schema.ts`.
+- Always import the schema definition functions from `convex/server`:
+- System fields are automatically added to all documents and are prefixed with an underscore. The two system fields that are automatically added to all documents are `_creationTime` which has the validator `v.number()` and `_id` which has the validator `v.id(tableName)`.
+- Always include all index fields in the index name. For example, if an index is defined as `["field1", "field2"]`, the index name should be "by_field1_and_field2".
+- Index fields must be queried in the same order they are defined. If you want to be able to query by "field1" then "field2" and by "field2" then "field1", you must create separate indexes.
+
+## Typescript guidelines
+- You can use the helper typescript type `Id` imported from './_generated/dataModel' to get the type of the id for a given table. For example if there is a table called 'users' you can use `Id<'users'>` to get the type of the id for that table.
+- If you need to define a `Record` make sure that you correctly provide the type of the key and value in the type. For example a validator `v.record(v.id('users'), v.string())` would have the type `Record<Id<'users'>, string>`. Below is an example of using `Record` with an `Id` type in a query:
+                    ```ts
+                    import { query } from "./_generated/server";
+                    import { Doc, Id } from "./_generated/dataModel";
+
+                    export const exampleQuery = query({
+                        args: { userIds: v.array(v.id("users")) },
+                        returns: v.record(v.id("users"), v.string()),
+                        handler: async (ctx, args) => {
+                            const idToUsername: Record<Id<"users">, string> = {};
+                            for (const userId of args.userIds) {
+                                const user = await ctx.db.get(userId);
+                                if (user) {
+                                    users[user._id] = user.username;
+                                }
+                            }
+
+                            return idToUsername;
+                        },
+                    });
+                    ```
+- Be strict with types, particularly around id's of documents. For example, if a function takes in an id for a document in the 'users' table, take in `Id<'users'>` rather than `string`.
+- Always use `as const` for string literals in discriminated union types.
+- When using the `Array` type, make sure to always define your arrays as `const array: Array<T> = [...];`
+- When using the `Record` type, make sure to always define your records as `const record: Record<KeyType, ValueType> = {...};`
+- Always add `@types/node` to your `package.json` when using any Node.js built-in modules.
+
+## Full text search guidelines
+- A query for "10 messages in channel '#general' that best match the query 'hello hi' in their body" would look like:
+
+const messages = await ctx.db
+  .query("messages")
+  .withSearchIndex("search_body", (q) =>
+    q.search("body", "hello hi").eq("channel", "#general"),
+  )
+  .take(10);
+
+## Query guidelines
+- Do NOT use `filter` in queries. Instead, define an index in the schema and use `withIndex` instead.
+- Convex queries do NOT support `.delete()`. Instead, `.collect()` the results, iterate over them, and call `ctx.db.delete(row._id)` on each result.
+- Use `.unique()` to get a single document from a query. This method will throw an error if there are multiple documents that match the query.
+- When using async iteration, don't use `.collect()` or `.take(n)` on the result of a query. Instead, use the `for await (const row of query)` syntax.
+### Ordering
+- By default Convex always returns documents in ascending `_creationTime` order.
+- You can use `.order('asc')` or `.order('desc')` to pick whether a query is in ascending or descending order. If the order isn't specified, it defaults to ascending.
+- Document queries that use indexes will be ordered based on the columns in the index and can avoid slow table scans.
+
+
+## Mutation guidelines
+- Use `ctx.db.replace` to fully replace an existing document. This method will throw an error if the document does not exist.
+- Use `ctx.db.patch` to shallow merge updates into an existing document. This method will throw an error if the document does not exist.
+
+## Action guidelines
+- Always add `"use node";` to the top of files containing actions that use Node.js built-in modules.
+- Never use `ctx.db` inside of an action. Actions don't have access to the database.
+- Below is an example of the syntax for an action:
+                    ```ts
+                    import { action } from "./_generated/server";
+
+                    export const exampleAction = action({
+                        args: {},
+                        returns: v.null(),
+                        handler: async (ctx, args) => {
+                            console.log("This action does not return anything");
+                            return null;
+                        },
+                    });
+                    ```
+
+## Scheduling guidelines
+### Cron guidelines
+- Only use the `crons.interval` or `crons.cron` methods to schedule cron jobs. Do NOT use the `crons.hourly`, `crons.daily`, or `crons.weekly` helpers.
+- Both cron methods take in a FunctionReference. Do NOT try to pass the function directly into one of these methods.
+- Define crons by declaring the top-level `crons` object, calling some methods on it, and then exporting it as default. For example,
+                            ```ts
+                            import { cronJobs } from "convex/server";
+                            import { internal } from "./_generated/api";
+                            import { internalAction } from "./_generated/server";
+
+                            const empty = internalAction({
+                              args: {},
+                              returns: v.null(),
+                              handler: async (ctx, args) => {
+                                console.log("empty");
+                              },
+                            });
+
+                            const crons = cronJobs();
+
+                            // Run `internal.crons.empty` every two hours.
+                            crons.interval("delete inactive users", { hours: 2 }, internal.crons.empty, {});
+
+                            export default crons;
+                            ```
+- You can register Convex functions within `crons.ts` just like any other file.
+- If a cron calls an internal function, always import the `internal` object from '_generated/api`, even if the internal function is registered in the same file.
+
+
+## File storage guidelines
+- Convex includes file storage for large files like images, videos, and PDFs.
+- The `ctx.storage.getUrl()` method returns a signed URL for a given file. It returns `null` if the file doesn't exist.
+- Do NOT use the deprecated `ctx.storage.getMetadata` call for loading a file's metadata.
+
+                    Instead, query the `_storage` system table. For example, you can use `ctx.db.system.get` to get an `Id<"_storage">`.
+                    ```
+                    import { query } from "./_generated/server";
+                    import { Id } from "./_generated/dataModel";
+
+                    type FileMetadata = {
+                        _id: Id<"_storage">;
+                        _creationTime: number;
+                        contentType?: string;
+                        sha256: string;
+                        size: number;
+                    }
+
+                    export const exampleQuery = query({
+                        args: { fileId: v.id("_storage") },
+                        returns: v.null();
+                        handler: async (ctx, args) => {
+                            const metadata: FileMetadata | null = await ctx.db.system.get(args.fileId);
+                            console.log(metadata);
+                            return null;
+                        },
+                    });
+                    ```
+- Convex storage stores items as `Blob` objects. You must convert all items to/from a `Blob` when using Convex storage.
+
+
+# Examples:
+## Example: chat-app
+
+### Task
+```
+Create a real-time chat application backend with AI responses. The app should:
+- Allow creating users with names
+- Support multiple chat channels
+- Enable users to send messages to channels
+- Automatically generate AI responses to user messages
+- Show recent message history
+
+The backend should provide APIs for:
+1. User management (creation)
+2. Channel management (creation)
+3. Message operations (sending, listing)
+4. AI response generation using OpenAI's GPT-4
+
+Messages should be stored with their channel, author, and content. The system should maintain message order
+and limit history display to the 10 most recent messages per channel.
+
+```
+
+### Analysis
+1. Task Requirements Summary:
+- Build a real-time chat backend with AI integration
+- Support user creation
+- Enable channel-based conversations
+- Store and retrieve messages with proper ordering
+- Generate AI responses automatically
+
+2. Main Components Needed:
+- Database tables: users, channels, messages
+- Public APIs for user/channel management
+- Message handling functions
+- Internal AI response generation system
+- Context loading for AI responses
+
+3. Public API and Internal Functions Design:
+Public Mutations:
+- createUser:
+  - file path: convex/index.ts
+  - arguments: {name: v.string()}
+  - returns: v.object({userId: v.id("users")})
+  - purpose: Create a new user with a given name
+- createChannel:
+  - file path: convex/index.ts
+  - arguments: {name: v.string()}
+  - returns: v.object({channelId: v.id("channels")})
+  - purpose: Create a new channel with a given name
+- sendMessage:
+  - file path: convex/index.ts
+  - arguments: {channelId: v.id("channels"), authorId: v.id("users"), content: v.string()}
+  - returns: v.null()
+  - purpose: Send a message to a channel and schedule a response from the AI
+
+Public Queries:
+- listMessages:
+  - file path: convex/index.ts
+  - arguments: {channelId: v.id("channels")}
+  - returns: v.array(v.object({
+    _id: v.id("messages"),
+    _creationTime: v.number(),
+    channelId: v.id("channels"),
+    authorId: v.optional(v.id("users")),
+    content: v.string(),
+    }))
+  - purpose: List the 10 most recent messages from a channel in descending creation order
+
+Internal Functions:
+- generateResponse:
+  - file path: convex/index.ts
+  - arguments: {channelId: v.id("channels")}
+  - returns: v.null()
+  - purpose: Generate a response from the AI for a given channel
+- loadContext:
+  - file path: convex/index.ts
+  - arguments: {channelId: v.id("channels")}
+  - returns: v.array(v.object({
+    _id: v.id("messages"),
+    _creationTime: v.number(),
+    channelId: v.id("channels"),
+    authorId: v.optional(v.id("users")),
+    content: v.string(),
+  }))
+- writeAgentResponse:
+  - file path: convex/index.ts
+  - arguments: {channelId: v.id("channels"), content: v.string()}
+  - returns: v.null()
+  - purpose: Write an AI response to a given channel
+
+4. Schema Design:
+- users
+  - validator: { name: v.string() }
+  - indexes: <none>
+- channels
+  - validator: { name: v.string() }
+  - indexes: <none>
+- messages
+  - validator: { channelId: v.id("channels"), authorId: v.optional(v.id("users")), content: v.string() }
+  - indexes
+    - by_channel: ["channelId"]
+
+5. Background Processing:
+- AI response generation runs asynchronously after each user message
+- Uses OpenAI's GPT-4 to generate contextual responses
+- Maintains conversation context using recent message history
+
+
+### Implementation
+
+#### package.json
+```typescript
+{
+  "name": "chat-app",
+  "description": "This example shows how to build a chat app without authentication.",
+  "version": "1.0.0",
+  "dependencies": {
+    "convex": "^1.17.4",
+    "openai": "^4.79.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
+```
+
+#### tsconfig.json
+```typescript
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "exclude": ["convex"],
+  "include": ["**/src/**/*.tsx", "**/src/**/*.ts", "vite.config.ts"]
+}
+```
+
+#### convex/index.ts
+```typescript
+import {
+  query,
+  mutation,
+  internalQuery,
+  internalMutation,
+  internalAction,
+} from "./_generated/server";
+import { v } from "convex/values";
+import OpenAI from "openai";
+import { internal } from "./_generated/api";
+
+/**
+ * Create a user with a given name.
+ */
+export const createUser = mutation({
+  args: {
+    name: v.string(),
+  },
+  returns: v.id("users"),
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("users", { name: args.name });
+  },
+});
+
+/**
+ * Create a channel with a given name.
+ */
+export const createChannel = mutation({
+  args: {
+    name: v.string(),
+  },
+  returns: v.id("channels"),
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("channels", { name: args.name });
+  },
+});
+
+/**
+ * List the 10 most recent messages from a channel in descending creation order.
+ */
+export const listMessages = query({
+  args: {
+    channelId: v.id("channels"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("messages"),
+      _creationTime: v.number(),
+      channelId: v.id("channels"),
+      authorId: v.optional(v.id("users")),
+      content: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_channel", (q) => q.eq("channelId", args.channelId))
+      .order("desc")
+      .take(10);
+    return messages;
+  },
+});
+
+/**
+ * Send a message to a channel and schedule a response from the AI.
+ */
+export const sendMessage = mutation({
+  args: {
+    channelId: v.id("channels"),
+    authorId: v.id("users"),
+    content: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const channel = await ctx.db.get(args.channelId);
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+    const user = await ctx.db.get(args.authorId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    await ctx.db.insert("messages", {
+      channelId: args.channelId,
+      authorId: args.authorId,
+      content: args.content,
+    });
+    await ctx.scheduler.runAfter(0, internal.index.generateResponse, {
+      channelId: args.channelId,
+    });
+    return null;
+  },
+});
+
+const openai = new OpenAI();
+
+export const generateResponse = internalAction({
+  args: {
+    channelId: v.id("channels"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const context = await ctx.runQuery(internal.index.loadContext, {
+      channelId: args.channelId,
+    });
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: context,
+    });
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No content in response");
+    }
+    await ctx.runMutation(internal.index.writeAgentResponse, {
+      channelId: args.channelId,
+      content,
+    });
+    return null;
+  },
+});
+
+export const loadContext = internalQuery({
+  args: {
+    channelId: v.id("channels"),
+  },
+  returns: v.array(
+    v.object({
+      role: v.union(v.literal("user"), v.literal("assistant")),
+      content: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const channel = await ctx.db.get(args.channelId);
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_channel", (q) => q.eq("channelId", args.channelId))
+      .order("desc")
+      .take(10);
+
+    const result = [];
+    for (const message of messages) {
+      if (message.authorId) {
+        const user = await ctx.db.get(message.authorId);
+        if (!user) {
+          throw new Error("User not found");
+        }
+        result.push({
+          role: "user" as const,
+          content: `${user.name}: ${message.content}`,
+        });
+      } else {
+        result.push({ role: "assistant" as const, content: message.content });
+      }
+    }
+    return result;
+  },
+});
+
+export const writeAgentResponse = internalMutation({
+  args: {
+    channelId: v.id("channels"),
+    content: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("messages", {
+      channelId: args.channelId,
+      content: args.content,
+    });
+    return null;
+  },
+});
+```
+
+#### convex/schema.ts
+```typescript
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  channels: defineTable({
+    name: v.string(),
+  }),
+
+  users: defineTable({
+    name: v.string(),
+  }),
+
+  messages: defineTable({
+    channelId: v.id("channels"),
+    authorId: v.optional(v.id("users")),
+    content: v.string(),
+  }).index("by_channel", ["channelId"]),
+});
+```
+
+#### src/App.tsx
+```typescript
+export default function App() {
+  return <div>Hello World</div>;
+}
+```
+
+
+

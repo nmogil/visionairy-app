@@ -122,6 +122,14 @@ const PromptPhase: React.FC<PromptPhaseProps> = ({
     setShowSuggestions(true);
   }, []);
 
+  // Handle form submission
+  const handleSubmit = useCallback(() => {
+    if (!prompt.trim() || hasSubmitted || hasProfanity) return;
+    onSubmitPrompt(prompt.trim());
+    setShowSubmitted(true);
+    setTimeout(() => setShowSubmitted(false), 3000);
+  }, [prompt, hasSubmitted, hasProfanity, onSubmitPrompt]);
+
   // Check for profanity
   useEffect(() => {
     const containsProfanity = PROFANITY_WORDS.some(word => 
@@ -142,13 +150,6 @@ const PromptPhase: React.FC<PromptPhaseProps> = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [prompt, hasSubmitted, handleSubmit]);
-
-  const handleSubmit = useCallback(() => {
-    if (!prompt.trim() || hasSubmitted || hasProfanity) return;
-    onSubmitPrompt(prompt.trim());
-    setShowSubmitted(true);
-    setTimeout(() => setShowSubmitted(false), 3000);
-  }, [prompt, hasSubmitted, hasProfanity, onSubmitPrompt]);
 
   const getCharacterCountColor = () => {
     if (remaining < 20) return "text-destructive";

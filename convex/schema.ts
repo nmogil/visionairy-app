@@ -113,20 +113,37 @@ export default defineSchema({
     .index("by_round", ["roundId"])
     .index("by_round_and_player", ["roundId", "playerId"]),
   
-  // Generated images (placeholder for now, AI in next step)
+  // Generated images with Google Gemini and OpenAI support
   generatedImages: defineTable({
     promptId: v.id("prompts"),
     imageUrl: v.string(),
-    storageId: v.optional(v.id("_storage")),
+    storageId: v.optional(v.id("_storage")), // Convex storage ID for the WebP image
     metadata: v.optional(v.object({
-      model: v.string(),
+      model: v.string(), // "google/gemini-2.5-flash-image-preview", "openai/dall-e-3", etc.
+      timestamp: v.optional(v.float64()),
+      generatedAt: v.optional(v.float64()),
+      
+      // Google Gemini specific fields
+      promptTokenCount: v.optional(v.float64()),
+      candidatesTokenCount: v.optional(v.float64()),
+      totalTokenCount: v.optional(v.float64()),
+      
+      // OpenAI specific fields
       seed: v.optional(v.float64()),
       revisedPrompt: v.optional(v.string()),
+      useImageEdit: v.optional(v.boolean()),
+      inference_steps: v.optional(v.float64()),
+      
+      // Cost tracking
+      estimatedCost: v.optional(v.float64()),
+      costCurrency: v.optional(v.string()),
     })),
     generatedAt: v.float64(),
     error: v.optional(v.string()),
   })
-    .index("by_prompt", ["promptId"]),
+    .index("by_prompt", ["promptId"])
+    .index("by_model", ["metadata.model"])
+    .index("by_generation_time", ["generatedAt"]),
   
   // Votes
   votes: defineTable({
@@ -139,4 +156,37 @@ export default defineSchema({
     .index("by_voter", ["voterId"])
     .index("by_image", ["imageId"])
     .index("by_round_and_voter", ["roundId", "voterId"]),
+
+  // User AI generation preferences
+  userSettings: defineTable({
+    userId: v.id("users"),
+    imageModel: v.union(
+      v.literal("google/gemini-2.5-flash-image-preview"),
+      v.literal("openai/dall-e-3"),
+      v.literal("openai/gpt-4o-vision-edit")
+    ),
+    createdAt: v.float64(),
+    updatedAt: v.float64(),
+  })
+    .index("by_user", ["userId"]),
+
+  // Image generation cache (to avoid regenerating similar prompts)
+  imageCache: defineTable({
+    promptHash: v.string(), // Hash of sanitized prompt + question text
+    imageUrl: v.string(),
+    storageId: v.id("_storage"),
+    model: v.string(),
+    metadata: v.optional(v.object({
+      originalPrompt: v.string(),
+      questionText: v.string(),
+      generationCount: v.float64(), // How many times this was reused
+    })),
+    createdAt: v.float64(),
+    expiresAt: v.float64(), // Cache expiration time
+    lastUsedAt: v.float64(),
+  })
+    .index("by_hash", ["promptHash"])
+    .index("by_expiry", ["expiresAt"])
+    .index("by_model", ["model"])
+    .index("by_usage", ["lastUsedAt"]),
 });

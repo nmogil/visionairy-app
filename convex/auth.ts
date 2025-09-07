@@ -19,12 +19,16 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
       }
       
       // Create new user (or replace corrupted user)
+      const isAnonymous = args.provider?.id === "anonymous";
       const userData = {
         ...args.profile,
         email: args.profile?.email,
-        isAnonymous: args.provider?.id === "anonymous",
+        isAnonymous,
         lastActiveAt: Date.now(),
-        onboardingCompleted: false,
+        // For anonymous users, skip onboarding and set default username
+        onboardingCompleted: isAnonymous,
+        username: isAnonymous ? `anonymous_${Math.random().toString(36).substr(2, 8)}` : undefined,
+        displayName: isAnonymous ? "Anonymous User" : undefined,
         isNewUser: true,
         gamesPlayed: 0,
         gamesWon: 0,
