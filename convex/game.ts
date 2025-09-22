@@ -275,16 +275,16 @@ export const transitionPhase = internalMutation({
     }
 
     switch (round.status) {
-      case "prompt":
+      case "prompt": {
         // Move to generating phase
         await ctx.db.patch(args.roundId, {
           status: "generating",
           phaseEndTime: Date.now() + GAME_CONFIG.GENERATION_PHASE_DURATION,
           generationStartedAt: Date.now(), // Track when generation started
         });
-        
+
         console.log(`[transitionPhase] Transitioning round ${args.roundId} to generating phase`);
-        
+
         // Use verification mechanism to ensure prompts exist before generation
         console.log(`[transitionPhase] Triggering AI generation verification for round ${args.roundId} with 1-second delay`);
         await ctx.scheduler.runAfter(1000, internal.game.verifyAndTriggerGeneration, {
@@ -292,49 +292,67 @@ export const transitionPhase = internalMutation({
           retryCount: 0,
         });
         console.log(`[transitionPhase] AI generation verification scheduled for round ${args.roundId} (delayed 1 second)`);
-        
-        // Schedule next transition
-        await ctx.scheduler.runAt(
+
+        // Schedule next transition and store job ID for potential cancellation
+        const generatingScheduledJobId = await ctx.scheduler.runAt(
           Date.now() + GAME_CONFIG.GENERATION_PHASE_DURATION,
           internal.game.transitionPhase,
           { roundId: args.roundId }
         );
+
+        // Store the scheduled job ID in the round for early progression
+        await ctx.db.patch(args.roundId, {
+          scheduledTransitionId: generatingScheduledJobId,
+        });
         break;
+      }
         
-      case "generating":
+      case "generating": {
         // Move to voting phase
         await ctx.db.patch(args.roundId, {
           status: "voting",
           phaseEndTime: Date.now() + GAME_CONFIG.VOTING_PHASE_DURATION,
         });
-        
-        // Schedule next transition
-        await ctx.scheduler.runAt(
+
+        // Schedule next transition and store job ID for potential cancellation
+        const votingScheduledJobId = await ctx.scheduler.runAt(
           Date.now() + GAME_CONFIG.VOTING_PHASE_DURATION,
           internal.game.transitionPhase,
           { roundId: args.roundId }
         );
+
+        // Store the scheduled job ID in the round for early progression
+        await ctx.db.patch(args.roundId, {
+          scheduledTransitionId: votingScheduledJobId,
+        });
         break;
+      }
         
-      case "voting":
+      case "voting": {
         // Move to results phase
         await ctx.db.patch(args.roundId, {
           status: "results",
           phaseEndTime: Date.now() + GAME_CONFIG.RESULTS_PHASE_DURATION,
         });
-        
+
         // Calculate scores
         await ctx.scheduler.runAfter(0, internal.game.calculateScores, {
           roundId: args.roundId,
         });
-        
-        // Schedule next transition
-        await ctx.scheduler.runAt(
+
+        // Schedule next transition and store job ID for potential cancellation
+        const resultsScheduledJobId = await ctx.scheduler.runAt(
           Date.now() + GAME_CONFIG.RESULTS_PHASE_DURATION,
           internal.game.transitionPhase,
           { roundId: args.roundId }
         );
+
+        // Store the scheduled job ID in the round for early progression
+        await ctx.db.patch(args.roundId, {
+          scheduledTransitionId: resultsScheduledJobId,
+        });
         break;
+      }
         
       case "results": {
         // Mark round as complete
@@ -579,7 +597,12 @@ export const submitVote = mutation({
         submittedAt: Date.now(),
       });
     }
-    
+
+    // Check if all players have voted and trigger early transition if so
+    await ctx.scheduler.runAfter(0, internal.game.checkAllPlayersVoted, {
+      roundId: round._id,
+    });
+
     return null;
   },
 });
@@ -667,11 +690,12 @@ export const startNextRound = internalMutation({
     
     const usedCardIds = previousRounds.map(r => r.questionCardId);
     
-    const availableCards = await ctx.db
+    const allActiveCards = await ctx.db
       .query("questionCards")
       .withIndex("by_active", (q) => q.eq("isActive", true))
-      .filter((q) => !usedCardIds.includes(q._id))
       .collect();
+
+    const availableCards = allActiveCards.filter(card => !usedCardIds.includes(card._id));
     
     let questionCard = availableCards.length > 0
       ? availableCards[Math.floor(Math.random() * availableCards.length)]
@@ -875,6 +899,133 @@ export const checkAllPlayersSubmitted = internalMutation({
       });
 
       console.log(`[checkAllPlayersSubmitted] Early transition scheduled for round ${args.roundId}`);
+    }
+
+    return null;
+  },
+});
+
+// Check if all connected players have voted and trigger early transition
+export const checkAllPlayersVoted = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    console.log(`[checkAllPlayersVoted] Checking votes for round ${args.roundId}`);
+
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "voting") {
+      console.log(`[checkAllPlayersVoted] Round ${args.roundId} not in voting phase, skipping check`);
+      return null;
+    }
+
+    // Get all connected players in the room
+    const connectedPlayers = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
+      .filter((q) => q.eq(q.field("status"), "connected"))
+      .collect();
+
+    if (connectedPlayers.length === 0) {
+      console.log(`[checkAllPlayersVoted] No connected players found`);
+      return null;
+    }
+
+    console.log(`[checkAllPlayersVoted] Found ${connectedPlayers.length} connected players`);
+
+    // Get all prompts for this round to determine voting eligibility
+    const prompts = await ctx.db
+      .query("prompts")
+      .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
+      .collect();
+
+    // Get all images generated for this round
+    const images = await Promise.all(
+      prompts.map(async (prompt) => {
+        const imgs = await ctx.db
+          .query("generatedImages")
+          .withIndex("by_prompt", (q) => q.eq("promptId", prompt._id))
+          .collect();
+        return { prompt, images: imgs };
+      })
+    );
+
+    // Check if there are any images to vote on
+    const totalImages = images.reduce((sum, item) => sum + item.images.length, 0);
+    if (totalImages === 0) {
+      console.log(`[checkAllPlayersVoted] No images generated yet, cannot proceed`);
+      return null;
+    }
+
+    console.log(`[checkAllPlayersVoted] Found ${totalImages} total images from ${prompts.length} prompts`);
+
+    // Get all votes submitted for this round
+    const submittedVotes = await ctx.db
+      .query("votes")
+      .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
+      .collect();
+
+    console.log(`[checkAllPlayersVoted] Found ${submittedVotes.length} submitted votes`);
+
+    // Create a set of player IDs who have voted
+    const votedPlayerIds = new Set(submittedVotes.map(vote => vote.voterId));
+
+    // Check voting eligibility for each connected player
+    let eligibleVoters = 0;
+    let playersWhoVoted = 0;
+
+    for (const player of connectedPlayers) {
+      // Check if this player submitted a prompt (and thus has an image they can't vote for)
+      const playerPrompt = prompts.find(p => p.playerId === player._id);
+
+      // Player is eligible to vote if:
+      // 1. There are images from other players to vote on
+      // 2. OR they didn't submit a prompt (so all images are votable)
+      const hasOtherPlayersImages = prompts.some(p => p.playerId !== player._id);
+
+      if (hasOtherPlayersImages || !playerPrompt) {
+        eligibleVoters++;
+        if (votedPlayerIds.has(player._id)) {
+          playersWhoVoted++;
+        }
+        console.log(`[checkAllPlayersVoted] Player ${player._id} is eligible, voted: ${votedPlayerIds.has(player._id)}`);
+      } else {
+        console.log(`[checkAllPlayersVoted] Player ${player._id} not eligible (only their own image available)`);
+      }
+    }
+
+    console.log(`[checkAllPlayersVoted] Eligible voters: ${eligibleVoters}, Players who voted: ${playersWhoVoted}`);
+
+    // Check if all eligible voters have voted
+    const allEligibleVoted = eligibleVoters > 0 && playersWhoVoted === eligibleVoters;
+
+    if (allEligibleVoted) {
+      console.log(`[checkAllPlayersVoted] All ${eligibleVoters} eligible players have voted! Triggering early transition`);
+
+      // Cancel the scheduled transition if it exists
+      if (round.scheduledTransitionId) {
+        try {
+          await ctx.scheduler.cancel(round.scheduledTransitionId);
+          console.log(`[checkAllPlayersVoted] Cancelled scheduled transition ${round.scheduledTransitionId}`);
+        } catch (error) {
+          console.log(`[checkAllPlayersVoted] Could not cancel scheduled transition (may have already started): ${error}`);
+        }
+      }
+
+      // Clear the scheduled transition ID to prevent race conditions
+      await ctx.db.patch(args.roundId, {
+        scheduledTransitionId: undefined,
+      });
+
+      // Trigger immediate transition to results phase
+      await ctx.scheduler.runAfter(0, internal.game.transitionPhase, {
+        roundId: args.roundId
+      });
+
+      console.log(`[checkAllPlayersVoted] Early transition scheduled for round ${args.roundId}`);
+    } else {
+      console.log(`[checkAllPlayersVoted] Not all eligible players have voted yet (${playersWhoVoted}/${eligibleVoters})`);
     }
 
     return null;
