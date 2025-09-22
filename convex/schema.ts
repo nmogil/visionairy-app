@@ -105,6 +105,9 @@ export default defineSchema({
     generationError: v.optional(v.string()),
     // Track scheduled phase transition for early progression
     scheduledTransitionId: v.optional(v.id("_scheduled_functions")),
+    // Track generation progress for early completion
+    generationExpectedCount: v.optional(v.float64()),   // Number of prompts to generate
+    generationCompletedCount: v.optional(v.float64()),  // Number completed (success or error)
   })
     .index("by_room", ["roomId"])
     .index("by_room_and_number", ["roomId", "roundNumber"])

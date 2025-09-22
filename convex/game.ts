@@ -276,11 +276,19 @@ export const transitionPhase = internalMutation({
 
     switch (round.status) {
       case "prompt": {
+        // Get prompt count for tracking generation progress
+        const prompts = await ctx.db
+          .query("prompts")
+          .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
+          .collect();
+
         // Move to generating phase
         await ctx.db.patch(args.roundId, {
           status: "generating",
           phaseEndTime: Date.now() + GAME_CONFIG.GENERATION_PHASE_DURATION,
           generationStartedAt: Date.now(), // Track when generation started
+          generationExpectedCount: prompts.length,  // Track expected count
+          generationCompletedCount: 0,              // Initialize counter
         });
 
         console.log(`[transitionPhase] Transitioning round ${args.roundId} to generating phase`);
@@ -399,12 +407,22 @@ export const storeGeneratedImage = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Store the generated image
     await ctx.db.insert("generatedImages", {
       promptId: args.promptId,
       imageUrl: args.imageUrl,
       metadata: args.metadata,
       generatedAt: args.generatedAt || Date.now(),
     });
+
+    // Get the prompt to find the round and increment progress
+    const prompt = await ctx.db.get(args.promptId);
+    if (prompt) {
+      await ctx.runMutation(internal.game.incrementGenerationProgress, {
+        roundId: prompt.roundId,
+      });
+    }
+
     return null;
   },
 });
@@ -423,6 +441,15 @@ export const storeImageError = internalMutation({
       error: args.error,
       generatedAt: Date.now(),
     });
+
+    // Get the prompt to find the round and increment progress
+    const prompt = await ctx.db.get(args.promptId);
+    if (prompt) {
+      await ctx.runMutation(internal.game.incrementGenerationProgress, {
+        roundId: prompt.roundId,
+      });
+    }
+
     return null;
   },
 });
@@ -438,6 +465,12 @@ export const markGenerationComplete = internalMutation({
     await ctx.db.patch(args.roundId, {
       generationCompletedAt: Date.now(),
     });
+
+    // Check for early transition opportunity
+    await ctx.runMutation(internal.game.checkAllImagesGenerated, {
+      roundId: args.roundId,
+    });
+
     console.log(`[markGenerationComplete] Marked round ${args.roundId} generation as complete`);
     return null;
   },
@@ -455,6 +488,82 @@ export const markGenerationFailed = internalMutation({
       generationCompletedAt: Date.now(),
     });
     console.error(`[markGenerationFailed] Marked round ${args.roundId} generation as failed: ${args.error}`);
+    return null;
+  },
+});
+
+// Progress tracking for early generation phase completion
+export const incrementGenerationProgress = internalMutation({
+  args: {
+    roundId: v.id("rounds")
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "generating") {
+      console.log(`[incrementGenerationProgress] Round ${args.roundId} not in generating phase, skipping`);
+      return null;
+    }
+
+    const newCount = (round.generationCompletedCount || 0) + 1;
+    await ctx.db.patch(args.roundId, {
+      generationCompletedCount: newCount,
+    });
+
+    console.log(`[incrementGenerationProgress] Round ${args.roundId}: ${newCount}/${round.generationExpectedCount || 0} images complete`);
+
+    // Check if all images are complete
+    await ctx.runMutation(internal.game.checkAllImagesGenerated, {
+      roundId: args.roundId,
+    });
+
+    return null;
+  },
+});
+
+export const checkAllImagesGenerated = internalMutation({
+  args: {
+    roundId: v.id("rounds")
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "generating") {
+      console.log(`[checkAllImagesGenerated] Round ${args.roundId} not in generating phase, skipping`);
+      return null;
+    }
+
+    const expected = round.generationExpectedCount || 0;
+    const completed = round.generationCompletedCount || 0;
+
+    console.log(`[checkAllImagesGenerated] Round ${args.roundId}: ${completed}/${expected} images complete`);
+
+    // Check if all images are done (including errors)
+    if (expected > 0 && completed >= expected) {
+      console.log(`[checkAllImagesGenerated] All images generated! Triggering early transition for round ${args.roundId}`);
+
+      // Cancel scheduled transition if it exists
+      if (round.scheduledTransitionId) {
+        try {
+          await ctx.scheduler.cancel(round.scheduledTransitionId);
+          console.log(`[checkAllImagesGenerated] Cancelled scheduled transition for round ${args.roundId}`);
+        } catch (error) {
+          console.warn(`[checkAllImagesGenerated] Could not cancel scheduled transition for round ${args.roundId}:`, error);
+        }
+
+        await ctx.db.patch(args.roundId, {
+          scheduledTransitionId: undefined,
+          generationCompletedAt: Date.now(),
+        });
+      }
+
+      // Trigger immediate transition to voting with a small delay
+      await ctx.scheduler.runAfter(500, internal.game.transitionPhase, {
+        roundId: args.roundId,
+      });
+      console.log(`[checkAllImagesGenerated] Scheduled early transition to voting for round ${args.roundId}`);
+    }
+
     return null;
   },
 });
@@ -816,6 +925,8 @@ export const verifyAndTriggerGeneration = internalMutation({
       await ctx.db.patch(args.roundId, {
         generationError: `No prompts found after ${maxRetries} retry attempts`,
         generationCompletedAt: Date.now(),
+        generationExpectedCount: 0,  // Set to 0 to indicate no generation needed
+        generationCompletedCount: 0,
       });
 
       // Transition to voting phase anyway with placeholder message
