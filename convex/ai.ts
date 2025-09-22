@@ -16,7 +16,33 @@ export const generateAIImages = internalAction({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    console.log(`[generateAIImages] Starting generation for round ${args.roundId} with model ${args.model || 'default'}`);
+    console.log(`[generateAIImages] ===== STARTING GENERATION =====`);
+    console.log(`[generateAIImages] Round ID: ${args.roundId}`);
+    console.log(`[generateAIImages] Model: ${args.model || 'default'}`);
+    
+    // First, verify we have prompts to generate from
+    const prompts = await ctx.runQuery(internal.game.getPromptsForRound, {
+      roundId: args.roundId,
+    });
+    
+    console.log(`[generateAIImages] Found ${prompts.length} prompts for round ${args.roundId}`);
+    
+    if (prompts.length === 0) {
+      console.error(`[generateAIImages] ERROR: No prompts found for round ${args.roundId}. Cannot generate images.`);
+
+      // Mark generation as failed
+      await ctx.runMutation(internal.game.markGenerationFailed, {
+        roundId: args.roundId,
+        error: "No prompts found for round. Cannot generate images.",
+      });
+
+      return null;
+    }
+    
+    // Log each prompt
+    prompts.forEach((prompt, index) => {
+      console.log(`[generateAIImages] Prompt ${index + 1}: "${prompt.text}" (Player: ${prompt.playerId})`);
+    });
     
     // Get the user's preferred model or use default
     let selectedModel = args.model || "google/gemini-2.5-flash-image-preview";
@@ -42,11 +68,20 @@ export const generateAIImages = internalAction({
       });
       
       console.log(`[generateAIImages] Successfully completed generation for round ${args.roundId}`);
+      
+      // Mark generation as completed
+      await ctx.runMutation(internal.game.markGenerationComplete, {
+        roundId: args.roundId,
+      });
+      
     } catch (error) {
       console.error(`[generateAIImages] Error in generation for round ${args.roundId}:`, error);
       
-      // The generation orchestrator already handles errors and stores them,
-      // so we don't need to do additional error handling here
+      // Mark generation as failed
+      await ctx.runMutation(internal.game.markGenerationFailed, {
+        roundId: args.roundId,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
     }
     
     return null;

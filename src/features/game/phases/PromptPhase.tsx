@@ -83,22 +83,62 @@ const PromptPhase: React.FC<PromptPhaseProps> = ({
   const { players, myPrompt, round } = gameState;
   const currentQuestion = round?.question || "Create something amazing";
   const hasSubmitted = !!myPrompt;
-  
-  const onSubmitPrompt = async (prompt: string) => {
-    if (handleSubmitPrompt) {
-      await handleSubmitPrompt(prompt);
-    }
-  };
+
   const [prompt, setPrompt] = useState(myPrompt || "");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentSuggestions, setCurrentSuggestions] = useState<string[]>([]);
   const [showSubmitted, setShowSubmitted] = useState(false);
   const [hasProfanity, setHasProfanity] = useState(false);
+  const [characterCount, setCharacterCount] = useState(0);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const submittedCount = players.filter(p => p.hasSubmitted).length;
   const totalPlayers = players.length;
   const remaining = 200 - prompt.length;
+
+  const validatePrompt = useCallback((text: string) => {
+    const trimmed = text.trim();
+    setCharacterCount(trimmed.length);
+
+    if (trimmed.length === 0) {
+      setValidationError("Prompt cannot be empty");
+      return false;
+    }
+    if (trimmed.length < 3) {
+      setValidationError("Prompt must be at least 3 characters");
+      return false;
+    }
+    if (trimmed.length > 200) {
+      setValidationError("Prompt must be less than 200 characters");
+      return false;
+    }
+
+    setValidationError(null);
+    return true;
+  }, []);
+
+  const handlePromptChange = useCallback((value: string) => {
+    setPrompt(value);
+    validatePrompt(value);
+  }, [validatePrompt]);
+
+  const onSubmitPrompt = useCallback(async (prompt: string) => {
+    if (!validatePrompt(prompt)) {
+      return; // Don't submit if validation fails
+    }
+
+    try {
+      if (handleSubmitPrompt) {
+        await handleSubmitPrompt(prompt.trim());
+        setShowSubmitted(true);
+      }
+    } catch (error) {
+      console.error('Failed to submit prompt:', error);
+      // Show error message to user
+      setValidationError(error instanceof Error ? error.message : 'Failed to submit prompt');
+    }
+  }, [validatePrompt, handleSubmitPrompt]);
 
   // Update prompt when myPrompt changes
   useEffect(() => {
@@ -124,11 +164,10 @@ const PromptPhase: React.FC<PromptPhaseProps> = ({
 
   // Handle form submission
   const handleSubmit = useCallback(() => {
-    if (!prompt.trim() || hasSubmitted || hasProfanity) return;
+    if (!prompt.trim() || hasSubmitted || hasProfanity || validationError) return;
     onSubmitPrompt(prompt.trim());
-    setShowSubmitted(true);
     setTimeout(() => setShowSubmitted(false), 3000);
-  }, [prompt, hasSubmitted, hasProfanity, onSubmitPrompt]);
+  }, [prompt, hasSubmitted, hasProfanity, validationError, onSubmitPrompt]);
 
   // Check for profanity
   useEffect(() => {
@@ -203,17 +242,21 @@ const PromptPhase: React.FC<PromptPhaseProps> = ({
                 id="prompt-input"
                 maxLength={200}
                 value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
+                onChange={(e) => handlePromptChange(e.target.value)}
                 placeholder={EXAMPLE_PROMPTS[placeholderIndex]}
-                className="w-full pr-16"
+                className={`w-full pr-16 ${validationError ? 'border-red-500' : ''}`}
                 disabled={hasSubmitted}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 <span className={`text-xs font-mono ${getCharacterCountColor()}`}>
-                  {remaining}
+                  {characterCount}/200
                 </span>
               </div>
             </div>
+            
+            {validationError && (
+              <p className="text-red-500 text-sm mt-1">{validationError}</p>
+            )}
           </div>
 
           {/* Profanity Warning */}
@@ -246,7 +289,7 @@ const PromptPhase: React.FC<PromptPhaseProps> = ({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!prompt.trim() || hasProfanity}
+              disabled={!prompt.trim() || hasProfanity || !!validationError}
               className="flex items-center gap-2"
             >
               Submit

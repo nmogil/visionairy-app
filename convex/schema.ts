@@ -99,9 +99,14 @@ export default defineSchema({
     startedAt: v.float64(),
     endedAt: v.optional(v.float64()),
     phaseEndTime: v.optional(v.float64()),
+    // Add generation tracking
+    generationStartedAt: v.optional(v.float64()),
+    generationCompletedAt: v.optional(v.float64()),
+    generationError: v.optional(v.string()),
   })
     .index("by_room", ["roomId"])
-    .index("by_room_and_number", ["roomId", "roundNumber"]),
+    .index("by_room_and_number", ["roomId", "roundNumber"])
+    .index("by_status", ["status"]),
   
   // Player prompts
   prompts: defineTable({

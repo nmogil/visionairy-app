@@ -143,34 +143,55 @@ export const submitPrompt = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    console.log(`[submitPrompt] ===== STARTING PROMPT SUBMISSION =====`);
+    console.log(`[submitPrompt] Room ID: ${args.roomId}`);
+    console.log(`[submitPrompt] Raw prompt: "${args.prompt}"`);
+
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
-    
-    // Validate prompt
-    if (args.prompt.length < 3 || args.prompt.length > 100) {
-      throw new Error("Prompt must be between 3 and 100 characters");
+
+    console.log(`[submitPrompt] User ID: ${userId}`);
+
+    // Validate prompt with better error messages and consistent limits
+    const trimmedPrompt = args.prompt.trim();
+    console.log(`[submitPrompt] Trimmed prompt: "${trimmedPrompt}" (length: ${trimmedPrompt.length})`);
+
+    if (trimmedPrompt.length < 3) {
+      throw new Error("Prompt must be at least 3 characters long");
     }
+    if (trimmedPrompt.length > 200) { // Increase limit to match UI
+      throw new Error("Prompt must be less than 200 characters");
+    }
+
+    // Use trimmed prompt for consistency
+    const promptToUse = trimmedPrompt;
     
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
-    
+
+    console.log(`[submitPrompt] User found: ${user.displayName || user.name || 'Unknown'}`);
+
     // Get current round
     const room = await ctx.db.get(args.roomId);
     if (!room || !room.currentRound) {
       throw new Error("No active round");
     }
-    
+
+    console.log(`[submitPrompt] Room found: ${room.name}, Current round: ${room.currentRound}`);
+
     const round = await ctx.db
       .query("rounds")
-      .withIndex("by_room_and_number", (q) => 
+      .withIndex("by_room_and_number", (q) =>
         q.eq("roomId", args.roomId).eq("roundNumber", room.currentRound)
       )
       .unique();
-      
+
     if (!round || round.status !== "prompt") {
       throw new Error("Not in prompt phase");
     }
-    
+
+    console.log(`[submitPrompt] Round found: ${round._id}, Status: ${round.status}`);
+
     // Get player
     const player = await ctx.db
       .query("players")
@@ -178,33 +199,41 @@ export const submitPrompt = mutation({
         q.eq("roomId", args.roomId).eq("userId", user._id)
       )
       .unique();
-      
+
     if (!player) throw new Error("Player not in room");
+
+    console.log(`[submitPrompt] Player found: ${player._id}`);
     
     // Check if already submitted
+    console.log(`[submitPrompt] Checking for existing prompt with roundId: ${round._id}, playerId: ${player._id}`);
     const existing = await ctx.db
       .query("prompts")
       .withIndex("by_round_and_player", (q) =>
         q.eq("roundId", round._id).eq("playerId", player._id)
       )
       .unique();
-      
+
     if (existing) {
       // Update existing prompt
+      console.log(`[submitPrompt] Updating existing prompt: ${existing._id}`);
       await ctx.db.patch(existing._id, {
-        text: args.prompt,
+        text: promptToUse, // Use trimmed prompt
         submittedAt: Date.now(),
       });
+      console.log(`[submitPrompt] Successfully updated prompt ${existing._id} with text: "${promptToUse}"`);
     } else {
       // Create new prompt
-      await ctx.db.insert("prompts", {
+      console.log(`[submitPrompt] Creating new prompt for round ${round._id}, player ${player._id}`);
+      const newPromptId = await ctx.db.insert("prompts", {
         roundId: round._id,
         playerId: player._id,
-        text: args.prompt,
+        text: promptToUse, // Use trimmed prompt
         submittedAt: Date.now(),
       });
+      console.log(`[submitPrompt] Successfully created new prompt ${newPromptId} with text: "${promptToUse}"`);
     }
-    
+
+    console.log(`[submitPrompt] ===== PROMPT SUBMISSION COMPLETE =====`);
     return null;
   },
 });
@@ -225,12 +254,18 @@ export const transitionPhase = internalMutation({
         await ctx.db.patch(args.roundId, {
           status: "generating",
           phaseEndTime: Date.now() + GAME_CONFIG.GENERATION_PHASE_DURATION,
+          generationStartedAt: Date.now(), // Track when generation started
         });
         
-        // Trigger AI image generation
-        await ctx.scheduler.runAfter(0, internal.ai.generateAIImages, {
+        console.log(`[transitionPhase] Transitioning round ${args.roundId} to generating phase`);
+        
+        // Use verification mechanism to ensure prompts exist before generation
+        console.log(`[transitionPhase] Triggering AI generation verification for round ${args.roundId} with 1-second delay`);
+        await ctx.scheduler.runAfter(1000, internal.game.verifyAndTriggerGeneration, {
           roundId: args.roundId,
+          retryCount: 0,
         });
+        console.log(`[transitionPhase] AI generation verification scheduled for round ${args.roundId} (delayed 1 second)`);
         
         // Schedule next transition
         await ctx.scheduler.runAt(
@@ -309,10 +344,13 @@ export const storeGeneratedImage = internalMutation({
   args: {
     promptId: v.id("prompts"),
     imageUrl: v.string(),
+    generatedAt: v.optional(v.number()),
     metadata: v.optional(v.object({
       model: v.string(),
       seed: v.optional(v.number()),
       inference_steps: v.optional(v.number()),
+      generatedAt: v.optional(v.number()),
+      timestamp: v.optional(v.number()),
     })),
   },
   returns: v.null(),
@@ -321,7 +359,7 @@ export const storeGeneratedImage = internalMutation({
       promptId: args.promptId,
       imageUrl: args.imageUrl,
       metadata: args.metadata,
-      generatedAt: Date.now(),
+      generatedAt: args.generatedAt || Date.now(),
     });
     return null;
   },
@@ -341,6 +379,38 @@ export const storeImageError = internalMutation({
       error: args.error,
       generatedAt: Date.now(),
     });
+    return null;
+  },
+});
+
+// Add these new internal mutations after storeImageError function
+
+export const markGenerationComplete = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.roundId, {
+      generationCompletedAt: Date.now(),
+    });
+    console.log(`[markGenerationComplete] Marked round ${args.roundId} generation as complete`);
+    return null;
+  },
+});
+
+export const markGenerationFailed = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+    error: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.roundId, {
+      generationError: args.error,
+      generationCompletedAt: Date.now(),
+    });
+    console.error(`[markGenerationFailed] Marked round ${args.roundId} generation as failed: ${args.error}`);
     return null;
   },
 });
@@ -379,14 +449,30 @@ export const getPromptsForRound = internalQuery({
   },
   returns: v.array(v.object({
     _id: v.id("prompts"),
+    _creationTime: v.number(),
     text: v.string(),
     playerId: v.id("players"),
+    roundId: v.id("rounds"),
+    submittedAt: v.number(),
   })),
   handler: async (ctx, args) => {
-    return await ctx.db
+    console.log(`[getPromptsForRound] ===== RETRIEVING PROMPTS =====`);
+    console.log(`[getPromptsForRound] Round ID: ${args.roundId}`);
+
+    const prompts = await ctx.db
       .query("prompts")
       .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
       .collect();
+
+    console.log(`[getPromptsForRound] Found ${prompts.length} prompts for round ${args.roundId}`);
+
+    // Log each prompt for debugging
+    prompts.forEach((prompt, index) => {
+      console.log(`[getPromptsForRound] Prompt ${index + 1}: ID=${prompt._id}, Text="${prompt.text}", PlayerId=${prompt.playerId}`);
+    });
+
+    console.log(`[getPromptsForRound] ===== PROMPT RETRIEVAL COMPLETE =====`);
+    return prompts;
   },
 });
 
@@ -629,6 +715,60 @@ export const endGame = internalMutation({
     //   roomId: args.roomId,
     // });
     
+    return null;
+  },
+});
+
+// Verify prompts exist and trigger AI generation with retry mechanism
+export const verifyAndTriggerGeneration = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+    retryCount: v.optional(v.number()), // Track retry attempts
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const retryCount = args.retryCount || 0;
+    const maxRetries = 3;
+
+    console.log(`[verifyAndTriggerGeneration] Attempt ${retryCount + 1}/${maxRetries} for round ${args.roundId}`);
+
+    // Check if prompts exist using the same query as AI generation
+    const prompts = await ctx.runQuery(internal.game.getPromptsForRound, {
+      roundId: args.roundId,
+    });
+
+    if (prompts.length > 0) {
+      // Prompts found! Trigger AI generation
+      console.log(`[verifyAndTriggerGeneration] Found ${prompts.length} prompts, triggering AI generation`);
+      await ctx.scheduler.runAfter(0, internal.ai.generateAIImages, {
+        roundId: args.roundId,
+      });
+      console.log(`[verifyAndTriggerGeneration] AI generation scheduled successfully`);
+    } else if (retryCount < maxRetries) {
+      // No prompts found, retry after delay
+      const delayMs = (retryCount + 1) * 1000; // Increasing delay: 1s, 2s, 3s
+      console.log(`[verifyAndTriggerGeneration] No prompts found, retrying in ${delayMs}ms (attempt ${retryCount + 1}/${maxRetries})`);
+
+      await ctx.scheduler.runAfter(delayMs, internal.game.verifyAndTriggerGeneration, {
+        roundId: args.roundId,
+        retryCount: retryCount + 1,
+      });
+    } else {
+      // Max retries reached, mark generation as failed
+      console.error(`[verifyAndTriggerGeneration] Failed to find prompts after ${maxRetries} attempts for round ${args.roundId}`);
+
+      // Mark the round as having a generation error
+      await ctx.db.patch(args.roundId, {
+        generationError: `No prompts found after ${maxRetries} retry attempts`,
+        generationCompletedAt: Date.now(),
+      });
+
+      // Transition to voting phase anyway with placeholder message
+      await ctx.scheduler.runAfter(2000, internal.game.transitionPhase, {
+        roundId: args.roundId,
+      });
+    }
+
     return null;
   },
 });

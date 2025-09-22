@@ -2,7 +2,9 @@
   "node": {
     "externalPackages": [
       "openai",
-      "sharp"
+      "sharp",
+      "@google/genai",
+      "formdata-node"
     ]
   }
 }
