@@ -103,6 +103,8 @@ export default defineSchema({
     generationStartedAt: v.optional(v.float64()),
     generationCompletedAt: v.optional(v.float64()),
     generationError: v.optional(v.string()),
+    // Track scheduled phase transition for early progression
+    scheduledTransitionId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_room", ["roomId"])
     .index("by_room_and_number", ["roomId", "roundNumber"])

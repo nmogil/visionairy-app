@@ -118,18 +118,23 @@ export const initializeGame = internalMutation({
       startedAt: Date.now(),
       phaseEndTime: Date.now() + GAME_CONFIG.PROMPT_PHASE_DURATION,
     });
-    
+
     // Update room status
     await ctx.db.patch(args.roomId, {
       status: "playing",
     });
-    
-    // Schedule phase transition
-    await ctx.scheduler.runAt(
+
+    // Schedule phase transition and store job ID for potential cancellation
+    const scheduledJobId = await ctx.scheduler.runAt(
       Date.now() + GAME_CONFIG.PROMPT_PHASE_DURATION,
       internal.game.transitionPhase,
       { roundId }
     );
+
+    // Store the scheduled job ID in the round for early progression
+    await ctx.db.patch(roundId, {
+      scheduledTransitionId: scheduledJobId,
+    });
     
     return null;
   },
@@ -233,6 +238,11 @@ export const submitPrompt = mutation({
       console.log(`[submitPrompt] Successfully created new prompt ${newPromptId} with text: "${promptToUse}"`);
     }
 
+    // Check if all players have submitted and trigger early transition if so
+    await ctx.scheduler.runAfter(0, internal.game.checkAllPlayersSubmitted, {
+      roundId: round._id,
+    });
+
     console.log(`[submitPrompt] ===== PROMPT SUBMISSION COMPLETE =====`);
     return null;
   },
@@ -245,9 +255,25 @@ export const transitionPhase = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    console.log(`[transitionPhase] Starting transition for round ${args.roundId}`);
+
     const round = await ctx.db.get(args.roundId);
-    if (!round) return null;
-    
+    if (!round) {
+      console.log(`[transitionPhase] Round ${args.roundId} not found, aborting transition`);
+      return null;
+    }
+
+    console.log(`[transitionPhase] Round ${args.roundId} current status: ${round.status}`);
+
+    // Clear the scheduled transition ID to indicate this transition is being processed
+    // This prevents duplicate transitions if multiple calls happen simultaneously
+    if (round.scheduledTransitionId) {
+      await ctx.db.patch(args.roundId, {
+        scheduledTransitionId: undefined,
+      });
+      console.log(`[transitionPhase] Cleared scheduled transition ID for round ${args.roundId}`);
+    }
+
     switch (round.status) {
       case "prompt":
         // Move to generating phase
@@ -677,18 +703,23 @@ export const startNextRound = internalMutation({
       startedAt: Date.now(),
       phaseEndTime: Date.now() + GAME_CONFIG.PROMPT_PHASE_DURATION,
     });
-    
+
     // Update room
     await ctx.db.patch(args.roomId, {
       currentRound: nextRoundNumber,
     });
-    
-    // Schedule phase transition
-    await ctx.scheduler.runAt(
+
+    // Schedule phase transition and store job ID for potential cancellation
+    const scheduledJobId = await ctx.scheduler.runAt(
       Date.now() + GAME_CONFIG.PROMPT_PHASE_DURATION,
       internal.game.transitionPhase,
       { roundId }
     );
+
+    // Store the scheduled job ID in the round for early progression
+    await ctx.db.patch(roundId, {
+      scheduledTransitionId: scheduledJobId,
+    });
     
     return null;
   },
@@ -767,6 +798,83 @@ export const verifyAndTriggerGeneration = internalMutation({
       await ctx.scheduler.runAfter(2000, internal.game.transitionPhase, {
         roundId: args.roundId,
       });
+    }
+
+    return null;
+  },
+});
+
+// Check if all connected players have submitted prompts and trigger early transition
+export const checkAllPlayersSubmitted = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    console.log(`[checkAllPlayersSubmitted] Checking submissions for round ${args.roundId}`);
+
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "prompt") {
+      console.log(`[checkAllPlayersSubmitted] Round ${args.roundId} not in prompt phase, skipping check`);
+      return null;
+    }
+
+    // Get all connected players in the room
+    const connectedPlayers = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
+      .filter((q) => q.eq(q.field("status"), "connected"))
+      .collect();
+
+    if (connectedPlayers.length === 0) {
+      console.log(`[checkAllPlayersSubmitted] No connected players found for round ${args.roundId}`);
+      return null;
+    }
+
+    console.log(`[checkAllPlayersSubmitted] Found ${connectedPlayers.length} connected players`);
+
+    // Get all prompts submitted for this round
+    const submittedPrompts = await ctx.db
+      .query("prompts")
+      .withIndex("by_round", (q) => q.eq("roundId", args.roundId))
+      .collect();
+
+    console.log(`[checkAllPlayersSubmitted] Found ${submittedPrompts.length} submitted prompts`);
+
+    // Create a set of player IDs who have submitted
+    const submittedPlayerIds = new Set(submittedPrompts.map(prompt => prompt.playerId));
+
+    // Check if all connected players have submitted
+    const allPlayersSubmitted = connectedPlayers.every(player =>
+      submittedPlayerIds.has(player._id)
+    );
+
+    console.log(`[checkAllPlayersSubmitted] All players submitted: ${allPlayersSubmitted}`);
+
+    if (allPlayersSubmitted) {
+      console.log(`[checkAllPlayersSubmitted] All ${connectedPlayers.length} connected players have submitted! Triggering early transition`);
+
+      // Cancel the scheduled transition if it exists
+      if (round.scheduledTransitionId) {
+        try {
+          await ctx.scheduler.cancel(round.scheduledTransitionId);
+          console.log(`[checkAllPlayersSubmitted] Cancelled scheduled transition ${round.scheduledTransitionId}`);
+        } catch (error) {
+          console.log(`[checkAllPlayersSubmitted] Could not cancel scheduled transition (may have already started): ${error}`);
+        }
+      }
+
+      // Clear the scheduled transition ID to prevent race conditions
+      await ctx.db.patch(args.roundId, {
+        scheduledTransitionId: undefined,
+      });
+
+      // Trigger immediate transition to next phase
+      await ctx.scheduler.runAfter(0, internal.game.transitionPhase, {
+        roundId: args.roundId
+      });
+
+      console.log(`[checkAllPlayersSubmitted] Early transition scheduled for round ${args.roundId}`);
     }
 
     return null;
