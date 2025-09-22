@@ -1,5 +1,6 @@
 "use node";
 import { Id } from "../_generated/dataModel";
+import { type ActionCtx } from "../_generated/server";
 import { GoogleGenAI } from "@google/genai";
 import { resizeAndConvertToWebp, createBaseImageFromPrompt } from "./lib";
 
@@ -82,7 +83,7 @@ export async function generateWithGoogle(
 
     // Find first inlineData part with image data
     let b64Out: string | null = null;
-    const parts: Array<any> = candidates[0].content?.parts ?? [];
+    const parts = candidates[0].content?.parts ?? [];
     for (const part of parts) {
       const inline = part.inlineData as { data?: string } | undefined;
       if (inline?.data) {
@@ -136,10 +137,10 @@ export async function generateWithGoogle(
  * Generate images with rate limiting to respect API limits
  */
 export async function generateImagesWithGoogleRateLimit(
-  ctx: any,
+  ctx: ActionCtx,
   prompts: Array<{ id: string; text: string }>,
   questionText: string
-): Promise<Map<string, { url?: string; storageId?: Id<"_storage">; error?: string; metadata?: any }>> {
+): Promise<Map<string, { url?: string; storageId?: Id<"_storage">; error?: string; metadata?: Record<string, unknown> }>> {
   const results = new Map();
   const RATE_LIMIT = {
     maxConcurrent: 2, // More conservative for Gemini

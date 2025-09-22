@@ -1,4 +1,4 @@
-import { mutation, internalMutation } from "./_generated/server";
+import { mutation, internalMutation, type DatabaseWriter } from "./_generated/server";
 import { v } from "convex/values";
 
 // Define the cards array for reuse
@@ -61,7 +61,7 @@ export const seedQuestionCardsInternal = internalMutation({
 });
 
 // Shared seeding logic
-async function seedQuestionCardsLogic(ctx: { db: any }) {
+async function seedQuestionCardsLogic(ctx: { db: DatabaseWriter }) {
   const existingCards = await ctx.db
     .query("questionCards")
     .collect();

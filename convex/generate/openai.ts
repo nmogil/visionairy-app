@@ -1,5 +1,6 @@
 "use node";
 import { Id } from "../_generated/dataModel";
+import { type ActionCtx } from "../_generated/server";
 import OpenAI from "openai";
 import { File } from "formdata-node";
 import { resizeAndConvertToWebp, base64ToUint8Array, createBaseImageFromPrompt, createEnhancedPrompt } from "./lib";
@@ -8,7 +9,7 @@ import { resizeAndConvertToWebp, base64ToUint8Array, createBaseImageFromPrompt, 
  * Generate image using OpenAI's DALL-E 3 or image editing models
  */
 export async function generateWithOpenAI(
-  ctx: any,
+  ctx: ActionCtx,
   prompt: string,
   questionText: string,
   useImageEdit = false
@@ -28,7 +29,6 @@ export async function generateWithOpenAI(
 
   try {
     let imageUrl: string;
-    let usage: any = null;
 
     if (useImageEdit) {
       // Use image editing with GPT-4o with vision
@@ -55,7 +55,6 @@ export async function generateWithOpenAI(
       }
 
       imageUrl = editResponse.data[0].url!;
-      usage = (editResponse as any).usage;
 
     } else {
       // Use DALL-E 3 for direct generation
@@ -82,20 +81,7 @@ export async function generateWithOpenAI(
       }
     }
 
-    // Log usage and compute detailed token-based cost per OpenAI pricing
-    if (usage) {
-      const { prompt_tokens, completion_tokens, total_tokens } = usage;
-      console.log(
-        `[generateWithOpenAI] Usage (reported): prompt_tokens=${prompt_tokens}, completion_tokens=${completion_tokens}, total_tokens=${total_tokens}`
-      );
-
-      // Estimate costs (these are approximate based on model used)
-      const COST_PER_1K_TOKENS = 0.03; // Rough estimate
-      const estimatedCost = (total_tokens / 1000) * COST_PER_1K_TOKENS;
-      console.log(
-        `[generateWithOpenAI] Estimated cost: $${estimatedCost.toFixed(6)}`
-      );
-    }
+    // Note: Usage tracking removed as OpenAI image APIs don't return usage metadata
 
     // Download and process the image
     console.log(`[generateWithOpenAI] Downloading image from: ${imageUrl}`);
@@ -135,11 +121,11 @@ export async function generateWithOpenAI(
  * Generate images with rate limiting for OpenAI API
  */
 export async function generateImagesWithOpenAIRateLimit(
-  ctx: any,
+  ctx: ActionCtx,
   prompts: Array<{ id: string; text: string }>,
   questionText: string,
   useImageEdit = false
-): Promise<Map<string, { url?: string; storageId?: Id<"_storage">; error?: string; metadata?: any }>> {
+): Promise<Map<string, { url?: string; storageId?: Id<"_storage">; error?: string; metadata?: Record<string, unknown> }>> {
   const results = new Map();
   const RATE_LIMIT = {
     maxConcurrent: 3, // Conservative rate limiting for OpenAI
