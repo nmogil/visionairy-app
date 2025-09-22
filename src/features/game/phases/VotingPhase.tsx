@@ -60,6 +60,7 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
   const { images, round, myVote } = gameState;
   const currentQuestion = round?.question || "Vote for your favorite";
   const hasVoted = !!myVote;
+
   
   const onVote = async (imageId: string) => {
     if (handleSubmitVote) {
@@ -81,18 +82,27 @@ const VotingPhase: React.FC<VotingPhaseProps> = ({
 
   // Image click handler
   const handleImageClick = (image: typeof imagesToShow[0], index: number) => {
-    // Always allow lightbox view
-    setLightboxImage(index);
-    
-    // If already voted, don't allow change
-    if (hasVoted) return;
-    
-    // Check if it's user's own image
-    if (image.isOwn) return;
-    
-    // Show confirmation for voting
-    setPendingVote(image._id);
-    setShowConfirmation(true);
+    console.log(`[VotingPhase] Image clicked:`, {
+      imageId: image._id,
+      isOwn: image.isOwn,
+      hasVoted,
+      myVote,
+      canVote: !hasVoted && !image.isOwn
+    });
+
+    // Check if user can vote on this image
+    const canVote = !hasVoted && !image.isOwn;
+
+    if (canVote) {
+      console.log(`[VotingPhase] Opening vote confirmation for image:`, image._id);
+      // Show confirmation for voting (no lightbox)
+      setPendingVote(image._id);
+      setShowConfirmation(true);
+    } else {
+      console.log(`[VotingPhase] Opening lightbox for image:`, index);
+      // Can't vote, just show lightbox for viewing
+      setLightboxImage(index);
+    }
   };
 
   const handleConfirmVote = () => {

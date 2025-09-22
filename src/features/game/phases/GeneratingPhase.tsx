@@ -15,6 +15,8 @@ interface GeneratingPhaseProps {
       status: string;
       phaseEndTime?: number;
       question: string;
+      generationExpectedCount?: number;
+      generationCompletedCount?: number;
     };
     players: Array<{
       _id: string;
@@ -60,13 +62,17 @@ const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
 }) => {
   const { players } = gameState;
   const [messageIndex, setMessageIndex] = useState(0);
-  const [completedCards, setCompletedCards] = useState<Set<number>>(new Set());
-  const [progress, setProgress] = useState(0);
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
 
-  const totalTime = 8; // 8 seconds total generation time
-  const currentProgress = ((totalTime - timeRemaining) / totalTime) * 100;
-  const isNearComplete = timeRemaining <= 2;
+  // Use actual generation progress
+  const expectedCount = gameState.round?.generationExpectedCount || players.length;
+  const completedCount = gameState.round?.generationCompletedCount || 0;
+  const progress = expectedCount > 0 ? (completedCount / expectedCount) * 100 : 0;
+  const isComplete = completedCount >= expectedCount && expectedCount > 0;
+  const isNearComplete = isComplete || timeRemaining <= 2;
+
+  // Update completed cards based on actual progress
+  const [completedCards, setCompletedCards] = useState<Set<number>>(new Set());
 
   // Initialize particles
   useEffect(() => {
@@ -87,23 +93,14 @@ const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Update progress smoothly
+  // Update cards based on actual completed count
   useEffect(() => {
-    setProgress(currentProgress);
-  }, [currentProgress]);
-
-  // Staggered card completion
-  useEffect(() => {
-    const completionThreshold = 70; // Start completing cards at 70% progress
-    if (progress >= completionThreshold) {
-      const cardsToComplete = Math.floor(((progress - completionThreshold) / (100 - completionThreshold)) * players.length);
-      const newCompleted = new Set<number>();
-      for (let i = 0; i < cardsToComplete; i++) {
-        newCompleted.add(i);
-      }
-      setCompletedCards(newCompleted);
+    const newCompleted = new Set<number>();
+    for (let i = 0; i < Math.min(completedCount, players.length); i++) {
+      newCompleted.add(i);
     }
-  }, [progress, players.length]);
+    setCompletedCards(newCompleted);
+  }, [completedCount, players.length]);
 
   return (
     <div className="space-y-6 relative overflow-hidden">
@@ -174,9 +171,21 @@ const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
           </motion.div>
         </AnimatePresence>
 
-        {/* Final countdown message */}
+        {/* Completion message */}
         <AnimatePresence>
-          {isNearComplete && (
+          {isComplete && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="text-lg font-semibold text-green-500 flex items-center justify-center gap-2"
+            >
+              <Zap className="w-5 h-5" />
+              All images ready! Get ready to vote!
+              <Zap className="w-5 h-5" />
+            </motion.div>
+          )}
+          {!isComplete && isNearComplete && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -191,24 +200,26 @@ const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Progress Bar */}
+      {/* Real Progress Display */}
       <div className="space-y-2 relative z-10">
         <div className="flex justify-between items-center">
-          <span className="text-sm font-medium">Generation Progress</span>
+          <span className="text-sm font-medium">
+            {isComplete ? "Generation Complete!" : "Generation Progress"}
+          </span>
           <span className="text-sm text-muted-foreground font-mono">
-            {Math.round(progress)}%
+            {completedCount}/{expectedCount} images
           </span>
         </div>
         <div className="h-3 bg-muted border-2 border-foreground rounded-none overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-primary to-primary-glow"
+            className={`h-full ${isComplete ? "bg-success" : "bg-gradient-to-r from-primary to-primary-glow"}`}
             style={{ width: `${progress}%` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           />
         </div>
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Starting generation...</span>
-          <span>{timeRemaining}s remaining</span>
+          <span>{isComplete ? "Ready for voting!" : "Processing prompts..."}</span>
+          <span>{isComplete ? "Transitioning soon..." : `Safety timer: ${timeRemaining}s`}</span>
         </div>
       </div>
 
@@ -325,7 +336,12 @@ const GeneratingPhase: React.FC<GeneratingPhaseProps> = ({
         </motion.div>
         <div className="flex justify-center items-center gap-2 text-xs">
           <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-          <span>Estimated time: {timeRemaining}s</span>
+          <span>
+            {isComplete
+              ? "All images complete - transitioning soon!"
+              : `Safety timeout: ${timeRemaining}s`
+            }
+          </span>
           <div className="w-2 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.5s" }} />
         </div>
       </div>

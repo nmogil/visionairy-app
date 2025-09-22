@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/8bit/card";
 import { CheckCircle, Clock, Users } from "lucide-react";
 import { GameTimer } from "@/components/game/GameTimer";
+import { ProgressTimer } from "@/components/game/ProgressTimer";
 import { Id } from "../../../convex/_generated/dataModel";
 
 interface Player {
@@ -16,9 +17,13 @@ interface Props {
   players: Player[];
   currentPhase: string;
   timeRemaining: number;
+  generationProgress?: {
+    expected: number;
+    completed: number;
+  };
 }
 
-const PlayerSidebar: React.FC<Props> = ({ players, currentPhase, timeRemaining }) => {
+const PlayerSidebar: React.FC<Props> = ({ players, currentPhase, timeRemaining, generationProgress }) => {
   const getPhaseDescription = (phase: string) => {
     switch (phase) {
       case "prompt":
@@ -62,20 +67,29 @@ const PlayerSidebar: React.FC<Props> = ({ players, currentPhase, timeRemaining }
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4" />
-            Time Remaining
+            {currentPhase === "generating" ? "Generation Progress" : "Time Remaining"}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center">
-            <div className={`text-2xl font-mono font-bold ${
-              timeRemaining <= 10 ? "text-destructive animate-pulse" : "text-primary"
-            }`}>
-              {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, "0")}
+          {currentPhase === "generating" && generationProgress ? (
+            <ProgressTimer
+              expectedCount={generationProgress.expected}
+              completedCount={generationProgress.completed}
+              maxTimeSeconds={30}
+              timeRemaining={timeRemaining}
+            />
+          ) : (
+            <div className="text-center">
+              <div className={`text-2xl font-mono font-bold ${
+                timeRemaining <= 10 ? "text-destructive animate-pulse" : "text-primary"
+              }`}>
+                {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, "0")}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {getPhaseDescription(currentPhase)}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {getPhaseDescription(currentPhase)}
-            </p>
-          </div>
+          )}
         </CardContent>
       </Card>
 

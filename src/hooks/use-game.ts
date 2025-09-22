@@ -98,6 +98,15 @@ export function useGame(roomId: string | undefined) {
   const currentPhase = gameState?.round?.status || "waiting";
   const hasSubmittedPrompt = !!gameState?.myPrompt;
   const hasVoted = !!gameState?.myVote;
+
+  // Determine if we should show progress timer for generation phase
+  const showProgressTimer = currentPhase === "generating" &&
+    gameState?.round?.generationExpectedCount !== undefined;
+
+  const generationProgress = {
+    expected: gameState?.round?.generationExpectedCount || 0,
+    completed: gameState?.round?.generationCompletedCount || 0,
+  };
   
   return {
     gameState,
@@ -105,6 +114,8 @@ export function useGame(roomId: string | undefined) {
     timeRemaining,
     hasSubmittedPrompt,
     hasVoted,
+    showProgressTimer,
+    generationProgress,
     handleSubmitPrompt,
     handleSubmitVote,
     isLoading: gameState === undefined,

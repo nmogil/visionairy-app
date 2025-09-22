@@ -1161,6 +1161,8 @@ export const getGameState = query({
         status: v.string(),
         phaseEndTime: v.optional(v.float64()),
         question: v.string(),
+        generationExpectedCount: v.optional(v.float64()),
+        generationCompletedCount: v.optional(v.float64()),
       })),
       players: v.array(v.object({
         _id: v.id("players"),
@@ -1215,6 +1217,8 @@ export const getGameState = query({
           status: roundData.status,
           phaseEndTime: roundData.phaseEndTime,
           question: card?.text ?? "Unknown question",
+          generationExpectedCount: roundData.generationExpectedCount,
+          generationCompletedCount: roundData.generationCompletedCount,
         };
       }
     }

@@ -31,6 +31,8 @@ export default function GameClient() {
     timeRemaining,
     hasSubmittedPrompt,
     hasVoted,
+    showProgressTimer,
+    generationProgress,
     handleSubmitPrompt,
     handleSubmitVote,
     isLoading
@@ -131,6 +133,7 @@ export default function GameClient() {
                   players={gameState.players}
                   currentPhase={currentPhase}
                   timeRemaining={timeRemaining}
+                  generationProgress={generationProgress}
                 />
               </Suspense>
             </aside>
