@@ -76,19 +76,10 @@ export const JoinRoomForm = () => {
     setIsJoining(true);
     
     try {
-      // If not authenticated, sign in anonymously first
-      if (!isAuthenticated && !isSigningIn) {
-        setIsSigningIn(true);
-        try {
-          await signIn("anonymous");
-        } catch (error) {
-          console.error("Anonymous sign-in failed:", error);
-          setError("Failed to authenticate. Please try again.");
-          setIsJoining(false);
-          setIsSigningIn(false);
-          return;
-        }
-        setIsSigningIn(false);
+      // If not authenticated, redirect to login
+      if (!isAuthenticated) {
+        navigate("/login");
+        return;
       }
       
       // Check if user has a username, if not show dialog
@@ -116,7 +107,7 @@ export const JoinRoomForm = () => {
     } finally {
       setIsJoining(false);
     }
-  }, [code, isAuthenticated, isSigningIn, signIn, user, navigateToRoom, joinRoom, getErrorMessage]);
+  }, [code, isAuthenticated, isSigningIn, signIn, user, navigate, navigateToRoom, joinRoom, getErrorMessage]);
 
   const handleNameSubmit = useCallback(
     async (name: string) => {

@@ -19,39 +19,17 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
 
-  // Auto-sign in anonymous users when they try to access protected routes
+  // Just redirect to login if not authenticated - no auto signin
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !isSigningIn && retryCount < 3) {
-      console.log(`[ProtectedRoute] Attempting anonymous sign-in (attempt ${retryCount + 1})`);
-      setIsSigningIn(true);
-      setLastError(null);
-      
-      signIn("anonymous")
-        .then(() => {
-          console.log("[ProtectedRoute] Anonymous sign-in successful");
-          setRetryCount(0);
-          // Don't immediately set isSigningIn to false - wait for auth state to be fully established
-        })
-        .catch((error) => {
-          console.error("[ProtectedRoute] Anonymous sign-in failed:", error);
-          setLastError(error.message || "Authentication failed");
-          setIsSigningIn(false);
-          setRetryCount(prev => prev + 1);
-          
-          // Retry after a delay
-          if (retryCount < 2) {
-            setTimeout(() => {
-              // This will trigger the effect again
-            }, 1000 * (retryCount + 1));
-          }
-        });
+    if (!isLoading && !isAuthenticated) {
+      // Redirect happens automatically by the component return
     }
-  }, [isLoading, isAuthenticated, isSigningIn, signIn, retryCount]);
+  }, [isLoading, isAuthenticated]);
 
   // Add authentication stabilization to prevent race conditions
   useEffect(() => {
     if (isAuthenticated && user !== undefined) {
-      console.log("[ProtectedRoute] Auth state stabilized", { user: user?.displayName || user?.username || "Anonymous" });
+      console.log("[ProtectedRoute] Auth state stabilized", { user: user?.displayName || user?.username || "User" });
       // Add small delay to ensure authentication context is fully established
       const timer = setTimeout(() => {
         setAuthStable(true);
@@ -84,7 +62,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
     );
   }
 
-  // If still not authenticated after trying anonymous sign-in, redirect to login
+  // If not authenticated, redirect to login
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }

@@ -71,15 +71,30 @@ function AppRoutes() {
           </ProtectedRoute>
         } 
       />
-      <Route 
-        path="/play/:roomId" 
+      <Route
+        path="/play/:roomId"
         element={
           <ProtectedRoute>
             <GameClient />
           </ProtectedRoute>
-        } 
+        }
       />
-      
+
+      {/* Debug route - remove in production */}
+      <Route
+        path="/debug/onboarding"
+        element={
+          <ProtectedRoute requireOnboarding={true}>
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold mb-4">Debug Onboarding Test</h1>
+                <p className="text-muted-foreground">This should trigger onboarding for users without completed profiles</p>
+              </div>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>

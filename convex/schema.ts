@@ -11,7 +11,6 @@ export default defineSchema({
     email: v.optional(v.string()),
     emailVerificationTime: v.optional(v.float64()),
     image: v.optional(v.string()),
-    isAnonymous: v.optional(v.boolean()),
     name: v.optional(v.string()),
     
     // Custom fields for our app
@@ -21,6 +20,7 @@ export default defineSchema({
     lastActiveAt: v.optional(v.float64()),
     onboardingCompleted: v.optional(v.boolean()),
     isNewUser: v.optional(v.boolean()), // Track if user just signed up
+    isAnonymous: v.optional(v.boolean()), // Track if user is anonymous
     
     // Game statistics
     gamesPlayed: v.optional(v.float64()),

@@ -44,23 +44,24 @@ export function AvatarStep({ onNext, onBack, data }: OnboardingStepProps) {
       </div>
 
       {/* Avatar grid */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
         {defaultAvatars.map((avatar) => (
           <button
             key={avatar.id}
             onClick={() => setSelectedAvatar(avatar.id)}
             className={`
-              aspect-square rounded-lg border-2 transition-all duration-200 p-3
+              aspect-square rounded-lg border-2 transition-all duration-200 p-2 sm:p-3
               flex flex-col items-center justify-center gap-1 hover:scale-105
+              min-h-[4rem] sm:min-h-[5rem]
               ${avatar.color}
-              ${selectedAvatar === avatar.id 
-                ? 'border-primary ring-2 ring-primary/20 scale-105' 
+              ${selectedAvatar === avatar.id
+                ? 'border-primary ring-2 ring-primary/20 scale-105'
                 : 'border-border hover:border-primary/50'
               }
             `}
           >
-            <span className="text-2xl">{avatar.emoji}</span>
-            <span className="text-xs font-medium text-center leading-tight">
+            <span className="text-lg sm:text-xl md:text-2xl">{avatar.emoji}</span>
+            <span className="text-[0.6rem] sm:text-xs font-medium text-center leading-tight">
               {avatar.name.split(' ').map(word => word.slice(0, 4)).join(' ')}
             </span>
           </button>
@@ -69,30 +70,30 @@ export function AvatarStep({ onNext, onBack, data }: OnboardingStepProps) {
 
       {/* Selected avatar preview */}
       {selectedAvatar && (
-        <div className="text-center p-4 bg-muted/30 rounded-lg">
-          <div className="flex items-center justify-center gap-3">
+        <div className="text-center p-3 sm:p-4 bg-muted/30 rounded-lg">
+          <div className="flex items-center justify-center gap-2 sm:gap-3">
             <div className={`
-              w-12 h-12 rounded-lg flex items-center justify-center
+              w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center
               ${defaultAvatars.find(a => a.id === selectedAvatar)?.color}
             `}>
-              <span className="text-2xl">
+              <span className="text-lg sm:text-2xl">
                 {defaultAvatars.find(a => a.id === selectedAvatar)?.emoji}
               </span>
             </div>
             <div className="text-left">
-              <p className="font-medium">
+              <p className="text-sm sm:text-base font-medium">
                 {defaultAvatars.find(a => a.id === selectedAvatar)?.name}
               </p>
-              <p className="text-sm text-muted-foreground">Selected avatar</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Selected avatar</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Upload option placeholder */}
-      <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+      <div className="border-2 border-dashed border-border rounded-lg p-3 sm:p-4 text-center">
         <svg
-          className="w-8 h-8 text-muted-foreground mx-auto mb-2"
+          className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground mx-auto mb-2"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -104,13 +105,13 @@ export function AvatarStep({ onNext, onBack, data }: OnboardingStepProps) {
             d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
           />
         </svg>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Custom avatar upload coming soon!
         </p>
       </div>
       
       {/* Navigation buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <Button
           variant="outline"
           onClick={onBack}

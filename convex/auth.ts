@@ -1,12 +1,10 @@
 import { convexAuth } from "@convex-dev/auth/server";
-import { Anonymous } from "@convex-dev/auth/providers/Anonymous";
 import { ResendOTP } from "./ResendOTP";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [ResendOTP, Anonymous],
+  providers: [ResendOTP], // Only email authentication
   callbacks: {
     async createOrUpdateUser(ctx, args) {
-      // For existing users, try to update them
       if (args.existingUserId) {
         const existingUser = await ctx.db.get(args.existingUserId);
         if (existingUser) {
@@ -15,26 +13,20 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           });
           return existingUser._id;
         }
-        // If existingUserId is provided but user not found, create new user
       }
-      
-      // Create new user (or replace corrupted user)
-      const isAnonymous = args.provider?.id === "anonymous";
+
+      // All users are email users now
       const userData = {
         ...args.profile,
         email: args.profile?.email,
-        isAnonymous,
         lastActiveAt: Date.now(),
-        // For anonymous users, skip onboarding and set default username
-        onboardingCompleted: isAnonymous,
-        username: isAnonymous ? `anonymous_${Math.random().toString(36).substr(2, 8)}` : undefined,
-        displayName: isAnonymous ? "Anonymous User" : undefined,
+        onboardingCompleted: false, // All users need username setup
         isNewUser: true,
         gamesPlayed: 0,
         gamesWon: 0,
         totalScore: 0,
       };
-      
+
       const userId = await ctx.db.insert("users", userData);
       return userId;
     },

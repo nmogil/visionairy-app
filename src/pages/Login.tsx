@@ -7,30 +7,31 @@ import { Input } from "@/components/ui/8bit/input";
 import { Label } from "@/components/ui/8bit/label";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowLeft, Mail, KeyRound, User } from "lucide-react";
+import { ArrowLeft, Mail, KeyRound, User, LogOut } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signIn } = useAuthActions();
-  const { isAuthenticated } = useAuth();
+  const { signIn, signOut } = useAuthActions();
+  const { user, isAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canonical =
     typeof window !== "undefined"
       ? `${window.location.origin}/login`
       : "/login";
 
-  // Auto-navigate when authentication succeeds
+  // Auto-navigate when authentication succeeds (only after form submission)
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isSubmitting) {
       console.log("Authentication successful, navigating to dashboard");
       navigate("/app/dashboard");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isSubmitting, navigate]);
 
   // Stop loading when auth state updates after OTP verification
   useEffect(() => {
@@ -43,6 +44,7 @@ const Login = () => {
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setLoading(true);
     setError(null);
     
@@ -60,6 +62,7 @@ const Login = () => {
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setLoading(true);
     setError(null);
     
@@ -80,25 +83,47 @@ const Login = () => {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      await signIn("anonymous");
-      navigate("/app/dashboard");
-    } catch (err) {
-      setError("Guest login failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleBack = () => {
     setStep("email");
     setCode("");
     setError(null);
   };
+
+  // Show sign out option if already authenticated
+  if (isAuthenticated && !isSubmitting) {
+    return (
+      <>
+        <Helmet>
+          <title>Login | AI Image Party</title>
+          <meta
+            name="description"
+            content="Login to AI Image Party to create and join rooms for collaborative AI image fun. Secure sign-in with OTP email verification."
+          />
+          <link rel="canonical" href={canonical} />
+        </Helmet>
+        <main className="container mx-auto max-w-md px-4 py-16">
+          <Card>
+            <CardHeader>
+              <CardTitle>Already signed in</CardTitle>
+              <CardDescription>
+                You're already signed in as {user?.displayName || user?.username || "User"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button onClick={() => navigate("/app/dashboard")} className="w-full">
+                Go to Dashboard
+              </Button>
+              <Button variant="outline" onClick={async () => { await signOut(); setIsSubmitting(false); }} className="w-full">
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out to Use Different Account
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -145,28 +170,6 @@ const Login = () => {
                     
                     <Button type="submit" className="w-full" disabled={loading}>
                       {loading ? "Sending..." : "Send Code"}
-                    </Button>
-                    
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                          Or
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleGuestLogin}
-                      disabled={loading}
-                    >
-                      <User className="mr-2 h-4 w-4" />
-                      Continue as Guest
                     </Button>
                   </form>
                 ) : (

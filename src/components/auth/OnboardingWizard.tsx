@@ -164,8 +164,8 @@ export function OnboardingWizard({ open, onComplete, onClose }: OnboardingWizard
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden p-0">
-        <div className="p-6 space-y-6">
+      <DialogContent className="w-[95vw] max-w-sm sm:max-w-md md:max-w-lg max-h-[90vh] overflow-hidden p-0">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Header */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">

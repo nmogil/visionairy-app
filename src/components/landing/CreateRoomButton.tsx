@@ -61,36 +61,20 @@ export const CreateRoomButton = () => {
   }, [pendingRoomCreation, isAuthenticated, isLoading, user, createAndNavigateToRoom]);
 
   const handleCreateRoom = useCallback(async () => {
-    // If not authenticated, sign in anonymously first
-    if (!isAuthenticated && !isSigningIn) {
-      setIsSigningIn(true);
-      setPendingRoomCreation(true);
-      try {
-        await signIn("anonymous");
-        console.log("Anonymous sign-in successful");
-      } catch (error) {
-        console.error("Anonymous sign-in failed:", error);
-        setIsSigningIn(false);
-        setPendingRoomCreation(false);
-        return;
-      }
-      setIsSigningIn(false);
-      return; // Let the useEffect handle the next step
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
     }
-    
-    // If already authenticated, check username immediately
+
     if (isAuthenticated && user && !user.username) {
-      console.log("Already authenticated, user has no username, showing dialog");
       setShowNameModal(true);
       return;
     }
-    
-    // If authenticated and has username, create room
+
     if (isAuthenticated && user?.username) {
-      console.log("Already authenticated, user has username, creating room");
       createAndNavigateToRoom();
     }
-  }, [isAuthenticated, isSigningIn, signIn, user, createAndNavigateToRoom]);
+  }, [isAuthenticated, user, navigate, createAndNavigateToRoom]);
 
   const handleNameSubmit = useCallback(
     async (name: string) => {

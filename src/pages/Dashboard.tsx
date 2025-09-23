@@ -124,7 +124,7 @@ const Dashboard = () => {
               <>
                 <p className="text-sm text-muted-foreground">Welcome back</p>
                 <p className="mt-1 text-2xl font-semibold tracking-tight">
-                  {user?.username || user?.displayName || (user?.isAnonymous ? "Anonymous User" : "User")}!
+                  {user?.username || user?.displayName || "User"}!
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {new Date().toLocaleString()}

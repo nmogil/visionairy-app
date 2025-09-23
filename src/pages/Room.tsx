@@ -429,7 +429,7 @@ const Room = () => {
         />
       )}
 
-      {/* Username Dialog - force open for guests without a name */}
+      {/* Username Dialog - force open for users without a name */}
       <UsernameDialog 
         open={!!showUsernameDialog} 
         onSubmit={handleUsernameSaved} 

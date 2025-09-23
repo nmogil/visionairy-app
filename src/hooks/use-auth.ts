@@ -17,7 +17,6 @@ export function useAuth() {
   //   isLoading,
   //   hasUser: !!user,
   //   userName: user?.displayName || user?.username,
-  //   isAnonymous: user?.isAnonymous,
   //   onboardingCompleted: user?.onboardingCompleted
   // });
   
