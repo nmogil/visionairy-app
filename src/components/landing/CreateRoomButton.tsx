@@ -96,11 +96,11 @@ export const CreateRoomButton = () => {
 
   return (
     <>
-      <Button 
-        size="xl" 
-        onClick={handleCreateRoom} 
-        aria-label="Create Room" 
-        className="hover-scale motion-reduce:transform-none"
+      <Button
+        size="xl"
+        onClick={handleCreateRoom}
+        aria-label="Create Room"
+        className="w-full hover-scale motion-reduce:transform-none"
         disabled={isLoading || isSigningIn || isCreatingRoom}
       >
         {isCreatingRoom ? <Loader2 className="animate-spin" /> : <Play />}

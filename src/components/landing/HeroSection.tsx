@@ -27,13 +27,13 @@ export const HeroSection = () => {
         </p>
 
         <div
-          className="mx-auto mt-8 flex w-full max-w-3xl flex-col items-stretch gap-3 md:flex-row md:items-center animate-fade-in motion-reduce:animate-none"
+          className="mx-auto mt-8 flex w-full max-w-3xl flex-col items-stretch gap-3 md:flex-row md:items-start animate-fade-in motion-reduce:animate-none"
           style={{ animationDelay: "200ms" }}
         >
-          <div className="flex-1">
+          <div className="flex-1 flex">
             <CreateRoomButton />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 flex">
             <JoinRoomForm />
           </div>
         </div>
