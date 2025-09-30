@@ -36,9 +36,9 @@ export async function generateWithGoogle(
     const mimeType = "image/png";
 
     // Create the enhancement prompt for Gemini
-    const enhancementPrompt = `Transform this image into a high-quality artwork based on: "${questionText} ${prompt}". 
-    Make it visually stunning, creative, and professionally rendered. Keep the core concept but make it much more detailed and artistic.
-    Style: photorealistic digital art, high quality, detailed, vibrant colors.`;
+    const enhancementPrompt = `Create a high-quality image that accurately depicts: "${questionText} ${prompt}".
+    Stay faithful to this exact description and concept. Use photorealistic digital art style with high detail and vibrant colors,
+    but prioritize accuracy to the prompt over artistic interpretation.`;
 
     // Follow the official SDK example: text + inlineData parts
     const contents = [
