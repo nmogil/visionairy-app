@@ -112,6 +112,7 @@ export const generateDecoratedImages = internalAction({
             await ctx.runMutation(internal.game.storeGeneratedImage, {
               promptId: promptId as Id<"prompts">,
               imageUrl: result.url,
+              storageId: result.storageId,
               metadata: {
                 model,
                 ...result.metadata,

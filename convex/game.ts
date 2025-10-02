@@ -396,6 +396,7 @@ export const storeGeneratedImage = internalMutation({
   args: {
     promptId: v.id("prompts"),
     imageUrl: v.string(),
+    storageId: v.id("_storage"),
     generatedAt: v.optional(v.number()),
     metadata: v.optional(v.object({
       model: v.string(),
@@ -411,6 +412,7 @@ export const storeGeneratedImage = internalMutation({
     await ctx.db.insert("generatedImages", {
       promptId: args.promptId,
       imageUrl: args.imageUrl,
+      storageId: args.storageId,
       metadata: args.metadata,
       generatedAt: args.generatedAt || Date.now(),
     });
