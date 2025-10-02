@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { createLazyRoute } from "@/utils/lazy";
+import { Analytics } from "@vercel/analytics/react";
 
 // Lazy load page components for better bundle splitting
 const Index = createLazyRoute(() => import("./pages/Index"), "homepage");
@@ -111,6 +112,7 @@ const App = () => (
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
+          <Analytics />
         </TooltipProvider>
       </QueryClientProvider>
     </HelmetProvider>

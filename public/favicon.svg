@@ -1,0 +1,19 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Black background -->
+  <rect width="32" height="32" fill="#000000"/>
+
+  <!-- Outer cyan border (8-bit style) -->
+  <rect x="4" y="4" width="24" height="20" fill="#0de2f5"/>
+  <rect x="6" y="6" width="20" height="16" fill="#000000"/>
+
+  <!-- Inner prompt symbol ">" in neon green -->
+  <path d="M10 11 L10 13 L12 13 L12 15 L14 15 L14 17 L12 17 L12 19 L10 19 L10 21 L12 21 L12 19 L14 19 L14 17 L16 17 L16 15 L14 15 L14 13 L12 13 L12 11 Z" fill="#33ff33"/>
+
+  <!-- Yellow accent pixel -->
+  <rect x="20" y="10" width="2" height="2" fill="#ffeb3b"/>
+  <rect x="22" y="10" width="2" height="2" fill="#ffeb3b"/>
+
+  <!-- Bottom tail (speech bubble style) -->
+  <rect x="8" y="24" width="2" height="2" fill="#0de2f5"/>
+  <rect x="6" y="26" width="2" height="2" fill="#0de2f5"/>
+</svg>

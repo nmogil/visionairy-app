@@ -1,0 +1,21 @@
+{
+  "name": "Prompty - Multiplayer AI Image Game",
+  "short_name": "Prompty",
+  "description": "Generate hilarious AI images to match crazy prompts with friends",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0de2f5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "en-US",
+  "dir": "ltr"
+}
