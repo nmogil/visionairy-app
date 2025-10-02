@@ -110,7 +110,7 @@ export const completeOnboarding = mutation({
   args: {
     username: v.string(),
     displayName: v.optional(v.string()),
-    avatarId: v.optional(v.string()), // Temporarily string-based until proper avatar storage is implemented
+    avatarId: v.union(v.string(), v.null()), // Temporarily string-based until proper avatar storage is implemented
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -138,15 +138,27 @@ export const completeOnboarding = mutation({
       
       // Use provided display name or fallback to username
       const displayName = args.displayName || args.username;
-      
+
       // Complete onboarding with all details
-      await ctx.db.patch(userId, {
+      const updateData: {
+        username: string;
+        displayName: string;
+        avatarId?: string;
+        onboardingCompleted: boolean;
+        isNewUser: boolean;
+      } = {
         username: args.username,
         displayName: displayName,
-        avatarId: args.avatarId,
         onboardingCompleted: true,
         isNewUser: false,
-      });
+      };
+
+      // Only include avatarId if it's provided (not null)
+      if (args.avatarId !== null) {
+        updateData.avatarId = args.avatarId;
+      }
+
+      await ctx.db.patch(userId, updateData);
       
       return null;
     } catch (error: unknown) {
