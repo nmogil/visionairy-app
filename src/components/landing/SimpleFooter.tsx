@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export const SimpleFooter = () => {
   return (
     <footer className="border-t">
@@ -5,7 +7,7 @@ export const SimpleFooter = () => {
         <p>© {new Date().getFullYear()} Mogil Ventures, LLC</p>
         <nav className="flex items-center gap-4">
           <a href="#" className="hover:underline">Privacy</a>
-          <a href="#" className="hover:underline">Terms</a>
+          <Link to="/terms" className="hover:underline">Terms</Link>
           <a href="#" className="hover:underline">Contact</a>
         </nav>
       </div>

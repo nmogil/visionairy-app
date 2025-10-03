@@ -21,6 +21,7 @@ const GameClient = createLazyRoute(() => import("./pages/GameClient"), "game");
 const Dashboard = createLazyRoute(() => import("./pages/Dashboard"), "dashboard");
 const ImageGridDemo = createLazyRoute(() => import("./pages/ImageGridDemo"), "image grid demo");
 const InteractionsStyleGuide = createLazyRoute(() => import("./components/interactions/InteractionsStyleGuide"), "style guide");
+const TermsOfService = createLazyRoute(() => import("./pages/TermsOfService"), "terms of service");
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,9 @@ function AppRoutes() {
       {/* Demo routes (public for now) */}
       <Route path="/image-grid-demo" element={<ImageGridDemo />} />
       <Route path="/interactions-guide" element={<InteractionsStyleGuide />} />
+
+      {/* Legal pages */}
+      <Route path="/terms" element={<TermsOfService />} />
       
       {/* Protected routes */}
       <Route 

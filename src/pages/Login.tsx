@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/8bit/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/8bit/card";
 import { Input } from "@/components/ui/8bit/input";
@@ -178,10 +178,10 @@ const Login = () => {
                       <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="text"
-                        placeholder="Enter 6-digit code"
+                        placeholder="6-digits"
                         value={code}
                         onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        className="pl-10 text-center text-2xl tracking-widest"
+                        className="pl-10 text-center text-2xl tracking-widest placeholder:text-base placeholder:tracking-normal"
                         maxLength={6}
                         pattern="[0-9]{6}"
                         required
@@ -231,7 +231,7 @@ const Login = () => {
               </CardContent>
             </Card>
             <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-              By signing in, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>. 
+              By signing in, you agree to our <Link to="/terms">Terms of Service</Link> and <Link to="/terms">Privacy Policy</Link>.
               New accounts will be created automatically.
             </div>
           </div>
