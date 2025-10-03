@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&family=VT323&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -73,7 +73,7 @@ All colors MUST be HSL.
     --secondary-foreground: 120 100% 70%;
 
     --muted: 150 20% 12%;
-    --muted-foreground: 120 40% 60%;
+    --muted-foreground: 120 45% 68%;
 
     --accent: 50 100% 50%;
     --accent-foreground: 222.2 84% 4.9%;
@@ -102,11 +102,14 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Press Start 2P', monospace;
+    font-family: 'VT323', monospace;
     background-color: hsl(var(--background));
     background-image: radial-gradient(circle at 1px 1px, hsl(var(--grid-dot) / 0.15) 1px, transparent 1px);
     background-size: 24px 24px;
     background-attachment: fixed;
+    font-size: 18px; /* VT323 needs slightly larger size for optimal readability */
+    line-height: 1.5;
+    letter-spacing: 0.01em;
   }
 
   html { scroll-behavior: smooth; }
@@ -171,5 +174,26 @@ All colors MUST be HSL.
     background-color: hsl(var(--background));
     background-image: radial-gradient(circle at 1px 1px, hsl(var(--grid-dot) / 0.15) 1px, transparent 1px);
     background-size: 24px 24px;
+  }
+}
+
+/* iOS Safe Area Support */
+@supports (padding: env(safe-area-inset-bottom)) {
+  /* Fixed bottom bars (Room page mobile action bar) */
+  .mobile-bottom-bar {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
+  /* Top safe area for headers */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Full-screen modals */
+  .safe-inset {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }

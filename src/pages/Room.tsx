@@ -383,7 +383,7 @@ const Room = () => {
       </main>
 
       {/* Mobile fixed action bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur md:hidden">
+      <div className="mobile-bottom-bar fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur md:hidden">
         <div className="container mx-auto flex items-center gap-3 px-4 py-3">
           {isHost && room.status === "waiting" ? (
             <Button

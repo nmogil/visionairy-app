@@ -144,7 +144,7 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <section aria-labelledby="quick-actions" className="mb-8">
-          <h2 id="quick-actions" className="mb-3 text-lg font-medium">
+          <h2 id="quick-actions" className="mb-3 text-xl font-semibold">
             Quick Actions
           </h2>
 
@@ -203,18 +203,18 @@ const Dashboard = () => {
 
         {/* Stats */}
         <section aria-labelledby="stats" className="mb-8">
-          <h2 id="stats" className="mb-3 text-lg font-medium">
+          <h2 id="stats" className="mb-3 text-xl font-semibold">
             Your Stats
           </h2>
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
               <Skeleton className="h-24" />
               <Skeleton className="h-24" />
               <Skeleton className="h-24" />
               <Skeleton className="h-24" />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-3 lg:grid-cols-4">
               <StatCard label="Games Played" value={stats.gamesPlayed} />
               <StatCard label="Games Won" value={stats.gamesWon} />
               <StatCard label="Images Created" value={stats.imagesCreated} />
