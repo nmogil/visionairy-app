@@ -71,7 +71,7 @@ export default function GameClient() {
         <Card className="p-6">
           <h2 className="text-xl font-semibold mb-2">Game Not Found</h2>
           <p className="text-muted-foreground mb-4">This game doesn't exist or has ended.</p>
-          <Button onClick={() => navigate("/dashboard")}>
+          <Button onClick={() => navigate("/app/dashboard")}>
             <DynamicIcon name="ArrowLeft" className="mr-2 h-4 w-4" />
             Back to Dashboard
           </Button>

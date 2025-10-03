@@ -18,6 +18,7 @@ import { DoorOpen, Grid3X3, LogOut, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useCreateRoom, useJoinRoom } from "@/hooks/use-room";
+import { toast } from "sonner";
 
 const mockStats = {
   gamesPlayed: 42,
@@ -184,7 +185,7 @@ const Dashboard = () => {
 
               <Card className="transition-transform hover:-translate-x-px hover:-translate-y-px">
                 <button
-                  onClick={() => alert("Coming soon!")}
+                  onClick={() => toast.info("Public Rooms coming soon!")}
                   className="flex h-full w-full flex-col items-start p-6 text-left"
                   aria-label="Browse public rooms"
                 >

@@ -21,10 +21,10 @@ export function useRoom(roomId: string | undefined) {
   
   const handleLeaveRoom = useCallback(async () => {
     if (!roomId) return;
-    
+
     try {
       await leaveRoom({ roomId: roomId as Id<"rooms"> });
-      navigate("/dashboard");
+      navigate("/app/dashboard");
     } catch (error) {
       console.error("Failed to leave room:", error);
       throw error;
