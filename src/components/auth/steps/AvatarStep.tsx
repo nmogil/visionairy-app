@@ -4,14 +4,14 @@ import { OnboardingStepProps } from "../OnboardingWizard";
 
 // Default avatar options (could be expanded to use actual file storage)
 const defaultAvatars = [
-  { id: "pixel-1", name: "Pixel Hero", emoji: "🦸", color: "bg-blue-100" },
-  { id: "pixel-2", name: "Digital Artist", emoji: "🎨", color: "bg-purple-100" },
-  { id: "pixel-3", name: "Game Master", emoji: "🎮", color: "bg-green-100" },
-  { id: "pixel-4", name: "Creative Mind", emoji: "🧠", color: "bg-yellow-100" },
-  { id: "pixel-5", name: "Vision Seeker", emoji: "👁️", color: "bg-red-100" },
-  { id: "pixel-6", name: "Dream Weaver", emoji: "✨", color: "bg-pink-100" },
-  { id: "pixel-7", name: "Code Wizard", emoji: "🧙", color: "bg-indigo-100" },
-  { id: "pixel-8", name: "Art Explorer", emoji: "🚀", color: "bg-orange-100" },
+  { id: "pixel-1", name: "Hero", emoji: "🦸", color: "bg-blue-100" },
+  { id: "pixel-2", name: "Artist", emoji: "🎨", color: "bg-purple-100" },
+  { id: "pixel-3", name: "Gamer", emoji: "🎮", color: "bg-green-100" },
+  { id: "pixel-4", name: "Brain", emoji: "🧠", color: "bg-yellow-100" },
+  { id: "pixel-5", name: "Seer", emoji: "👁️", color: "bg-red-100" },
+  { id: "pixel-6", name: "Dreamer", emoji: "✨", color: "bg-pink-100" },
+  { id: "pixel-7", name: "Wizard", emoji: "🧙", color: "bg-indigo-100" },
+  { id: "pixel-8", name: "Scout", emoji: "🚀", color: "bg-orange-100" },
 ];
 
 export function AvatarStep({ onNext, onBack, data }: OnboardingStepProps) {
@@ -61,8 +61,8 @@ export function AvatarStep({ onNext, onBack, data }: OnboardingStepProps) {
             `}
           >
             <span className="text-lg sm:text-xl md:text-2xl">{avatar.emoji}</span>
-            <span className="text-[0.6rem] sm:text-xs font-medium text-center leading-tight">
-              {avatar.name.split(' ').map(word => word.slice(0, 4)).join(' ')}
+            <span className="text-[0.6rem] sm:text-xs font-medium text-center leading-tight text-gray-900 dark:text-gray-800">
+              {avatar.name}
             </span>
           </button>
         ))}
