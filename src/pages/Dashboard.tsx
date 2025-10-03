@@ -67,19 +67,20 @@ const Dashboard = () => {
     });
     
     if (!result.success && result.error) {
-      alert(result.error);
+      toast.error(result.error);
     }
   };
 
   const handleJoinRoomClick = async () => {
     if (!/^[A-Z0-9]{6}$/.test(roomCode)) {
-      alert("Please enter a valid 6-character code (letters and numbers)");
+      toast.error("Please enter a valid 6-character code (letters and numbers)");
       return;
     }
     
     const result = await joinRoom(roomCode);
     if (!result.success) {
-      alert(result.error || "Failed to join room");
+      toast.error(result.error || "Failed to join room");
+      return; // Don't close dialog on error
     }
     setShowJoin(false);
   };
@@ -269,7 +270,7 @@ const Dashboard = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => alert("Details coming soon!")}
+                      onClick={() => toast.info("Game details coming soon!")}
                       aria-label="View game details"
                     >
                       View details

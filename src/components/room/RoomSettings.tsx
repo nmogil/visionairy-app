@@ -8,11 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/8bit/c
 import { Label } from "@/components/ui/8bit/label";
 import { Slider } from "@/components/ui/8bit/slider";
 import { Button } from "@/components/ui/8bit/button";
+import { Input } from "@/components/ui/8bit/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { 
   Clock, 
   Users, 
@@ -113,6 +116,8 @@ export default function RoomSettings({
   const [settings, setSettings] = useState<RoomSettings>(defaultSettings);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [savedPresets, setSavedPresets] = useState<Preset[]>([]);
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
+  const [presetName, setPresetName] = useState("");
 
   const updateSetting = <K extends keyof RoomSettings>(key: K, value: RoomSettings[K]) => {
     const newSettings = { ...settings, [key]: value };
@@ -131,14 +136,21 @@ export default function RoomSettings({
   };
 
   const saveCurrentPreset = () => {
-    const name = prompt("Enter preset name:");
-    if (name) {
+    setPresetName("");
+    setShowPresetDialog(true);
+  };
+
+  const handleSavePreset = () => {
+    if (presetName.trim()) {
       const newPreset: Preset = {
-        name,
+        name: presetName.trim(),
         description: "Custom preset",
         settings: { ...settings }
       };
       setSavedPresets([...savedPresets, newPreset]);
+      setShowPresetDialog(false);
+      setPresetName("");
+      toast.success(`Preset "${presetName.trim()}" saved!`);
     }
   };
 
@@ -480,6 +492,40 @@ export default function RoomSettings({
           </CardContent>
         </Card>
       </div>
+
+      {/* Save Preset Dialog */}
+      <Dialog open={showPresetDialog} onOpenChange={setShowPresetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Preset</DialogTitle>
+            <DialogDescription>
+              Enter a name for your custom preset
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Preset name"
+            value={presetName}
+            onChange={(e) => setPresetName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && presetName.trim()) {
+                handleSavePreset();
+              }
+            }}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPresetDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePreset}
+              disabled={!presetName.trim()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   );
 }
