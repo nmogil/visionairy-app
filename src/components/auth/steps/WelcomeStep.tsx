@@ -32,7 +32,7 @@ export function WelcomeStep({ onNext, isFirst }: OnboardingStepProps) {
 
       {/* Welcome message */}
       <div className="space-y-3">
-        <h3 className="text-2xl font-bold">Welcome to Visionairy!</h3>
+        <h3 className="text-2xl font-bold">Welcome to Prompty!</h3>
         <p className="text-muted-foreground leading-relaxed">
           Let's complete your profile so you can start playing with others.
         </p>

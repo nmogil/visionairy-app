@@ -23,11 +23,21 @@ export function CompletionStep({ onNext, onBack, onError, data }: OnboardingStep
     setLoading(true);
     
     try {
-      await completeOnboarding({
+      const payload: {
+        username: string;
+        displayName?: string;
+        avatarId?: string;
+      } = {
         username,
         displayName: displayName !== username ? displayName : undefined,
-        avatarId: data.avatar?.avatarId, // String-based avatar ID (matches schema)
-      });
+      };
+
+      // Only include avatarId if it exists
+      if (data.avatar?.avatarId) {
+        payload.avatarId = data.avatar.avatarId;
+      }
+
+      await completeOnboarding(payload);
 
       setCompleted(true);
       

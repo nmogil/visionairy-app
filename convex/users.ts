@@ -110,7 +110,7 @@ export const completeOnboarding = mutation({
   args: {
     username: v.string(),
     displayName: v.optional(v.string()),
-    avatarId: v.union(v.string(), v.null()), // Temporarily string-based until proper avatar storage is implemented
+    avatarId: v.optional(v.string()), // Temporarily string-based until proper avatar storage is implemented
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -153,8 +153,8 @@ export const completeOnboarding = mutation({
         isNewUser: false,
       };
 
-      // Only include avatarId if it's provided (not null)
-      if (args.avatarId !== null) {
+      // Only include avatarId if it's provided
+      if (args.avatarId) {
         updateData.avatarId = args.avatarId;
       }
 

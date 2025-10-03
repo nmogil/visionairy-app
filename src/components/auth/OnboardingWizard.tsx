@@ -61,7 +61,7 @@ const steps: OnboardingStep[] = [
   { 
     id: 'welcome', 
     title: 'Welcome', 
-    description: 'Get started with Visionairy', 
+    description: 'Get started with Prompty', 
     component: WelcomeStep, 
     required: true 
   },
@@ -164,25 +164,26 @@ export function OnboardingWizard({ open, onComplete, onClose }: OnboardingWizard
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[95vw] max-w-sm sm:max-w-md md:max-w-lg max-h-[90vh] overflow-hidden p-0">
-        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {/* Header */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">{currentStep.title}</h2>
-              <span className="text-sm text-muted-foreground">
-                {currentStepIndex + 1} of {steps.length}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground">{currentStep.description}</p>
-            
-            {/* Progress bar */}
-            <Progress value={progress} className="h-2" />
+      <DialogContent className="w-[95vw] max-w-sm sm:max-w-md md:max-w-lg max-h-[90vh] p-0 flex flex-col">
+        {/* Fixed Header Section */}
+        <div className="flex-shrink-0 p-4 sm:p-6 pb-4 space-y-2 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">{currentStep.title}</h2>
+            <span className="text-sm text-muted-foreground">
+              {currentStepIndex + 1} of {steps.length}
+            </span>
           </div>
+          <p className="text-sm text-muted-foreground">{currentStep.description}</p>
 
+          {/* Progress bar */}
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        {/* Scrollable Content Section */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Error display */}
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-4">
+            <div className="rounded-lg bg-red-50 border border-red-200 p-4 mb-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
@@ -215,9 +216,11 @@ export function OnboardingWizard({ open, onComplete, onClose }: OnboardingWizard
               isLast={currentStepIndex === steps.length - 1}
             />
           </div>
+        </div>
 
-          {/* Skip button for optional steps */}
-          {!currentStep.required && currentStepIndex > 0 && currentStepIndex < steps.length - 1 && (
+        {/* Fixed Footer Section - Only for optional steps */}
+        {!currentStep.required && currentStepIndex > 0 && currentStepIndex < steps.length - 1 && (
+          <div className="flex-shrink-0 p-4 sm:p-6 pt-0 border-t">
             <div className="flex justify-center">
               <button
                 onClick={handleSkip}
@@ -226,8 +229,8 @@ export function OnboardingWizard({ open, onComplete, onClose }: OnboardingWizard
                 Skip this step
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

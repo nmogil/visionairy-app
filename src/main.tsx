@@ -51,7 +51,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ConvexAuthProvider 
       client={convex}
       storage={createPersistentStorage()}
-      storageNamespace="visionairy-auth"
+      storageNamespace="Prompty-auth"
     >
       <App />
     </ConvexAuthProvider>
