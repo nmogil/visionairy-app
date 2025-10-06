@@ -18,6 +18,7 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
   const [authStable, setAuthStable] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Just redirect to login if not authenticated - no auto signin
   useEffect(() => {
@@ -40,6 +41,16 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
       setAuthStable(false);
     }
   }, [isAuthenticated, user]);
+
+  // Check if user needs onboarding and show modal
+  useEffect(() => {
+    if (requireOnboarding && user && authStable) {
+      const needsOnboarding = !user.username || !user.onboardingCompleted;
+      setShowOnboarding(needsOnboarding);
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [requireOnboarding, user, authStable]);
 
   // Show loading state while checking auth, signing in, or stabilizing
   if (isLoading || isSigningIn || (isAuthenticated && !authStable)) {
@@ -67,10 +78,31 @@ export function ProtectedRoute({ children, requireOnboarding = true }: Protected
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Show onboarding wizard if user needs to complete onboarding
-  if (requireOnboarding && user && (!user.username || !user.onboardingCompleted)) {
-    return <OnboardingWizard open={true} />;
-  }
+  // Handlers for onboarding wizard
+  const handleOnboardingComplete = () => {
+    console.log("[ProtectedRoute] Onboarding completed");
+    setShowOnboarding(false);
+  };
 
-  return <>{children}</>;
+  const handleOnboardingClose = () => {
+    // Don't allow closing without completing if onboarding is required
+    if (!user?.onboardingCompleted && requireOnboarding) {
+      console.log("[ProtectedRoute] Cannot close onboarding - not completed");
+      return;
+    }
+    setShowOnboarding(false);
+  };
+
+  return (
+    <>
+      {children}
+      {showOnboarding && (
+        <OnboardingWizard
+          open={showOnboarding}
+          onComplete={handleOnboardingComplete}
+          onClose={handleOnboardingClose}
+        />
+      )}
+    </>
+  );
 }
