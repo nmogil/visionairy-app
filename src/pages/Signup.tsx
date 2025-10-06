@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
 const Signup = () => {
   const navigate = useNavigate();
-  
+  const location = useLocation();
+
   const canonical =
     typeof window !== "undefined"
       ? `${window.location.origin}/signup`
@@ -12,8 +13,9 @@ const Signup = () => {
 
   useEffect(() => {
     // Redirect to login page since we use the same OTP flow for both login and signup
-    navigate("/login", { replace: true });
-  }, [navigate]);
+    // Preserve the 'from' location if it exists
+    navigate("/login", { replace: true, state: location.state });
+  }, [navigate, location.state]);
 
   return (
     <>

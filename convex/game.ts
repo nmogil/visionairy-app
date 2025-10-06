@@ -639,12 +639,23 @@ export const submitVote = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    console.log(`[submitVote] ===== VOTE SUBMISSION STARTED =====`);
+    console.log(`[submitVote] Room: ${args.roomId}, Image: ${args.imageId}`);
+
     const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Not authenticated");
-    
+    if (!userId) {
+      console.error("[submitVote] ERROR: User not authenticated");
+      throw new Error("Not authenticated");
+    }
+
+    console.log(`[submitVote] User ID: ${userId}`);
+
     const user = await ctx.db.get(userId);
-    if (!user) throw new Error("User not found");
-    
+    if (!user) {
+      console.error(`[submitVote] ERROR: User ${userId} not found`);
+      throw new Error("User not found");
+    }
+
     // Get player
     const player = await ctx.db
       .query("players")
@@ -652,38 +663,59 @@ export const submitVote = mutation({
         q.eq("roomId", args.roomId).eq("userId", user._id)
       )
       .unique();
-    if (!player) throw new Error("Player not in room");
-    
+    if (!player) {
+      console.error(`[submitVote] ERROR: Player not found for user ${user._id} in room ${args.roomId}`);
+      throw new Error("Player not in room");
+    }
+
+    console.log(`[submitVote] Player ID: ${player._id}`);
+
     // Get current round
     const room = await ctx.db.get(args.roomId);
     if (!room || !room.currentRound) {
+      console.error(`[submitVote] ERROR: No active round in room ${args.roomId}`);
       throw new Error("No active round");
     }
-    
+
+    console.log(`[submitVote] Current round number: ${room.currentRound}`);
+
     const round = await ctx.db
       .query("rounds")
       .withIndex("by_room_and_number", (q) =>
         q.eq("roomId", args.roomId).eq("roundNumber", room.currentRound)
       )
       .unique();
-      
+
     if (!round || round.status !== "voting") {
-      throw new Error("Not in voting phase");
+      console.error(`[submitVote] ERROR: Round ${round?._id} status is "${round?.status}", expected "voting"`);
+      throw new Error(`Not in voting phase (current phase: ${round?.status || 'unknown'})`);
     }
-    
+
+    console.log(`[submitVote] Round ID: ${round._id}, Status: ${round.status}`);
+
     // Verify image belongs to this round
     const image = await ctx.db.get(args.imageId);
-    if (!image) throw new Error("Image not found");
-    
+    if (!image) {
+      console.error(`[submitVote] ERROR: Image ${args.imageId} not found`);
+      throw new Error("Image not found");
+    }
+
+    console.log(`[submitVote] Image found, Prompt ID: ${image.promptId}`);
+
     const prompt = await ctx.db.get(image.promptId);
     if (!prompt || prompt.roundId !== round._id) {
+      console.error(`[submitVote] ERROR: Image prompt ${image.promptId} belongs to round ${prompt?.roundId}, expected ${round._id}`);
       throw new Error("Invalid image for this round");
     }
-    
+
     // Can't vote for own image
     if (prompt.playerId === player._id) {
+      console.error(`[submitVote] ERROR: Player ${player._id} attempted to vote for own image`);
       throw new Error("Cannot vote for your own image");
     }
+
+    console.log(`[submitVote] All validations passed`);
+
     
     // Check if already voted
     const existingVote = await ctx.db
@@ -714,6 +746,7 @@ export const submitVote = mutation({
       roundId: round._id,
     });
 
+    console.log(`[submitVote] ===== VOTE SUBMISSION SUCCESSFUL =====`);
     return null;
   },
 });

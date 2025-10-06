@@ -79,19 +79,47 @@ export async function generateWithGoogle(
     }
 
     const candidates = genResponse.candidates ?? [];
-    if (candidates.length === 0) throw new Error("Gemini returned no candidates");
 
-    // Find first inlineData part with image data
+    // Check for content blocking
+    if (candidates.length === 0) {
+      const blockReason = genResponse.promptFeedback?.blockReason;
+      const safetyRatings = genResponse.promptFeedback?.safetyRatings;
+      console.error(`[generateWithGoogle] No candidates. BlockReason: ${blockReason}, Ratings:`, safetyRatings);
+      throw new Error(`Content blocked: ${blockReason || 'safety filter'}`);
+    }
+
+    // Check for finish reason issues
+    const finishReason = candidates[0].finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+      console.error(`[generateWithGoogle] Unexpected finish reason: ${finishReason}`);
+    }
+
+    // Find image data
     let b64Out: string | null = null;
     const parts = candidates[0].content?.parts ?? [];
+    console.log(`[generateWithGoogle] Response has ${parts.length} parts`);
+
     for (const part of parts) {
-      const inline = part.inlineData as { data?: string } | undefined;
+      const inline = part.inlineData as { data?: string; mimeType?: string } | undefined;
       if (inline?.data) {
         b64Out = inline.data;
+        console.log(`[generateWithGoogle] Found image data, mimeType: ${inline.mimeType}`);
         break;
       }
     }
-    if (!b64Out) throw new Error("Gemini response did not include image data");
+
+    if (!b64Out) {
+      // Log the actual response structure for debugging
+      console.error(`[generateWithGoogle] No image data found. Response structure:`,
+        JSON.stringify({
+          candidatesCount: candidates.length,
+          finishReason: candidates[0].finishReason,
+          partsCount: parts.length,
+          partTypes: parts.map(p => Object.keys(p))
+        }, null, 2)
+      );
+      throw new Error("Gemini response did not include image data");
+    }
 
     // Convert to webp and store in Convex storage
     const outBytes = Buffer.from(b64Out, "base64");

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/8bit/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/8bit/card";
 import { Input } from "@/components/ui/8bit/input";
@@ -11,6 +11,7 @@ import { ArrowLeft, Mail, KeyRound, User, LogOut } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { signIn, signOut } = useAuthActions();
   const { user, isAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
@@ -28,10 +29,12 @@ const Login = () => {
   // Auto-navigate when authentication succeeds (only after form submission)
   useEffect(() => {
     if (isAuthenticated && isSubmitting) {
-      console.log("Authentication successful, navigating to dashboard");
-      navigate("/app/dashboard");
+      // Redirect to the page they were trying to access, or dashboard as fallback
+      const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/app/dashboard";
+      console.log("Authentication successful, navigating to:", from);
+      navigate(from, { replace: true });
     }
-  }, [isAuthenticated, isSubmitting, navigate]);
+  }, [isAuthenticated, isSubmitting, navigate, location]);
 
   // Stop loading when auth state updates after OTP verification
   useEffect(() => {
