@@ -9,7 +9,7 @@ export const generateAIImages = internalAction({
   args: {
     roundId: v.id("rounds"),
     model: v.optional(v.union(
-      v.literal("google/gemini-2.5-flash-image-preview"),
+      v.literal("google/gemini-3-pro-image-preview"),
       v.literal("openai/dall-e-3"),
       v.literal("openai/gpt-4o-vision-edit")
     )),
@@ -45,14 +45,14 @@ export const generateAIImages = internalAction({
     });
     
     // Get the user's preferred model or use default
-    let selectedModel = args.model || "google/gemini-2.5-flash-image-preview";
+    let selectedModel = args.model || "google/gemini-3-pro-image-preview";
     
     // If no specific model requested, check user settings
     if (!args.model) {
       try {
         // For now, we'll use the default. In the future, we could look up user preferences
         // based on the round's host or some other logic
-        selectedModel = "google/gemini-2.5-flash-image-preview";
+        selectedModel = "google/gemini-3-pro-image-preview";
       } catch (error) {
         console.warn(`[generateAIImages] Could not determine user preference, using default: ${error}`);
       }
@@ -93,7 +93,7 @@ export const testImageGeneration = internalAction({
   args: {
     prompt: v.string(),
     model: v.optional(v.union(
-      v.literal("google/gemini-2.5-flash-image-preview"),
+      v.literal("google/gemini-3-pro-image-preview"),
       v.literal("openai/dall-e-3"),
       v.literal("openai/gpt-4o-vision-edit")
     )),
@@ -104,7 +104,7 @@ export const testImageGeneration = internalAction({
     error: v.optional(v.string()),
     model: v.string(),
   }),
-  handler: async (ctx, { prompt, model = "google/gemini-2.5-flash-image-preview" }) => {
+  handler: async (ctx, { prompt, model = "google/gemini-3-pro-image-preview" }) => {
     console.log(`[testImageGeneration] Testing ${model} with prompt: ${prompt}`);
     
     try {
@@ -149,7 +149,7 @@ export const getAIModelStatus = internalAction({
       console.error(`[getAIModelStatus] Error checking model status:`, error);
       return {
         models: [],
-        defaultModel: "google/gemini-2.5-flash-image-preview",
+        defaultModel: "google/gemini-3-pro-image-preview",
       };
     }
   },

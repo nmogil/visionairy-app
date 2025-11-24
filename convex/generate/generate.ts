@@ -14,7 +14,7 @@ export const generateDecoratedImages = internalAction({
   args: {
     roundId: v.id("rounds"),
     model: v.optional(v.union(
-      v.literal("google/gemini-2.5-flash-image-preview"),
+      v.literal("google/gemini-3-pro-image-preview"),
       v.literal("openai/dall-e-3"),
       v.literal("openai/gpt-4o-vision-edit")
     )),
@@ -23,7 +23,7 @@ export const generateDecoratedImages = internalAction({
   returns: v.null(),
   handler: async (
     ctx,
-    { roundId, model = "google/gemini-2.5-flash-image-preview", shouldDeletePreviousDecorated = false }
+    { roundId, model = "google/gemini-3-pro-image-preview", shouldDeletePreviousDecorated = false }
   ) => {
     console.log(`[generateDecoratedImages] Starting for round ${roundId} with model ${model}`);
 
@@ -54,7 +54,7 @@ export const generateDecoratedImages = internalAction({
       let results: Map<string, { url?: string; storageId?: Id<"_storage">; error?: string; metadata?: Record<string, unknown> }>;
       
       try {
-        if (model === "google/gemini-2.5-flash-image-preview") {
+        if (model === "google/gemini-3-pro-image-preview") {
           console.log(`[generateDecoratedImages] Using Google Gemini for generation`);
           results = await generateImagesWithGoogleRateLimit(
             ctx,
@@ -175,7 +175,7 @@ export const testGeneration = internalAction({
   args: {
     prompt: v.string(),
     model: v.optional(v.union(
-      v.literal("google/gemini-2.5-flash-image-preview"),
+      v.literal("google/gemini-3-pro-image-preview"),
       v.literal("openai/dall-e-3"),
       v.literal("openai/gpt-4o-vision-edit")
     )),
@@ -189,7 +189,7 @@ export const testGeneration = internalAction({
       timestamp: v.number(),
     })),
   }),
-  handler: async (ctx, { prompt, model = "google/gemini-2.5-flash-image-preview" }) => {
+  handler: async (ctx, { prompt, model = "google/gemini-3-pro-image-preview" }) => {
     console.log(`[testGeneration] Testing ${model} with prompt: ${prompt}`);
     
     try {
@@ -198,7 +198,7 @@ export const testGeneration = internalAction({
       
       let results: Map<string, { url?: string; storageId?: Id<"_storage">; error?: string; metadata?: Record<string, unknown> }>;
       
-      if (model === "google/gemini-2.5-flash-image-preview") {
+      if (model === "google/gemini-3-pro-image-preview") {
         results = await generateImagesWithGoogleRateLimit(ctx, testPrompts, questionText);
       } else if (model === "openai/dall-e-3") {
         results = await generateImagesWithOpenAIRateLimit(ctx, testPrompts, questionText, false);
@@ -257,7 +257,7 @@ export const getGenerationStatus = internalAction({
   handler: async (ctx) => {
     const models = [
       {
-        id: "google/gemini-2.5-flash-image-preview",
+        id: "google/gemini-3-pro-image-preview",
         name: "Google Gemini 2.5 Flash (Image Preview)",
       },
       {
@@ -307,7 +307,7 @@ export const getGenerationStatus = internalAction({
 
     return {
       models: modelStatus,
-      defaultModel: "google/gemini-2.5-flash-image-preview",
+      defaultModel: "google/gemini-3-pro-image-preview",
     };
   },
 });

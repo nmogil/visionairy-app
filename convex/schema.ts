@@ -129,7 +129,7 @@ export default defineSchema({
     imageUrl: v.string(),
     storageId: v.optional(v.id("_storage")), // Convex storage ID for the WebP image
     metadata: v.optional(v.object({
-      model: v.string(), // "google/gemini-2.5-flash-image-preview", "openai/dall-e-3", etc.
+      model: v.string(), // "google/gemini-3-pro-image-preview", "openai/dall-e-3", etc.
       timestamp: v.optional(v.float64()),
       generatedAt: v.optional(v.float64()),
       
@@ -171,7 +171,7 @@ export default defineSchema({
   userSettings: defineTable({
     userId: v.id("users"),
     imageModel: v.union(
-      v.literal("google/gemini-2.5-flash-image-preview"),
+      v.literal("google/gemini-3-pro-image-preview"),
       v.literal("openai/dall-e-3"),
       v.literal("openai/gpt-4o-vision-edit")
     ),
